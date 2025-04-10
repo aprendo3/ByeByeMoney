@@ -12,3 +12,5 @@ nbdist/
 # Package Files #
 *.jar
 *.war
+
+data/

@@ -1,5 +1,23 @@
 import java.util.Scanner;
 
+class User {
+    private String username;
+    private String password;
+
+    public User(String username, String password) {
+        this.username = username;
+        this.password = password;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+}
+
 public class Main {
     static final String GREEN = "\033[32m";
     static final String RESET = "\033[0m";
@@ -9,7 +27,10 @@ public class Main {
     static boolean logged = false;
 
     public static void main(String[] args) {
-        showWelcomeMenu();
+        //showWelcomeMenu();
+        DataStore store = new DataStore();
+        //store.addUser(new User("u1", "u"));
+        store.getUser("u1");
     }
 
     private static void showUserMenu() {
