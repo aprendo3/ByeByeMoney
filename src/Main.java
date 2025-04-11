@@ -1,5 +1,6 @@
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -74,19 +75,18 @@ public class Main {
     public static void main(String[] args) {
         showWelcomeMenu();
         
-//        DataStore store = new DataStore();
-//        User user = store.getUser("u1");
-//        //if (user != null) return;
-//        //store.addUser(new User("u1", "u"));
-//        //user = store.getUser("u1");
-//        Transaction transaction = new Transaction(LocalDate.now().format(DATE_FORMATTER), "", 5, TransactionType.EXPENSE);
-//        user.transactions.add(transaction);
-//        store.updateUser(user);
-          
-          if ( logged && user != null) {
-              cleanScreen();
-              showUserMenu();
-          }
+        //User user = store.getUser("u1");
+        //if (user != null) return;
+        //store.addUser(new User("u1", "u"));
+        //user = store.getUser("u1");
+        //Transaction transaction = new Transaction(LocalDate.now().format(DATE_FORMATTER), "", 5, TransactionType.EXPENSE);
+        //user.transactions.add(transaction);
+        //store.updateUser(user);
+        
+        if ( logged && user != null) {
+            cleanScreen();
+            showUserMenu();
+        }
     }
 
     private static void showUserMenu() {
@@ -105,6 +105,7 @@ public class Main {
 
             switch (choice) {
             case "a":
+                addTransaction();
                 cleanScreen();
                 break;
             case "v":
@@ -194,7 +195,7 @@ public class Main {
         String username = scanner.nextLine();
         System.out.print("Enter your password: ");
         String password = scanner.nextLine();
-        
+       
         if (tryLogin(username, password)) {
             System.out.println("Login successful!");
             logged = true;
@@ -211,5 +212,85 @@ public class Main {
         
         user = null;
         return false;
+    }
+
+    private static void addTransaction() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sAdd Transaction%s\n\n", BLUE, RED, BLUE, RESET);
+
+        TransactionType type;
+        while (true) {
+            System.out.print("Enter type (I for Income, E for Expense): ");
+            String typeChoice = scanner.nextLine().toUpperCase();
+            if ("I".equals(typeChoice)) {
+                type = TransactionType.INCOME;
+                break;
+            } else if ("E".equals(typeChoice)) {
+                type = TransactionType.EXPENSE;
+                break;
+            } else {
+                System.out.println("Invalid type. Please enter I or E.");
+            }
+        }
+
+        String date;
+        while (true) {
+            System.out.printf("Enter date (YYYYMMDD, Enter for today %s): ", LocalDate.now().format(DATE_FORMATTER));
+            date = scanner.nextLine();
+            if (date.isEmpty()) {
+                date = LocalDate.now().format(DATE_FORMATTER);
+                break;
+            }
+            if (isValidDate(date)) {
+                break;
+            } else {
+                System.out.println("Invalid date format. Use YYYYMMDD.");
+            }
+        }
+
+        System.out.print("Enter description: ");
+        String description = scanner.nextLine();
+
+        double amount;
+        while (true) {
+            System.out.print("Enter amount (positive number): ");
+            Double parsedAmount = tryToParseDouble(scanner.nextLine());
+            if (parsedAmount != null && parsedAmount > 0) {
+                amount = parsedAmount;
+                break;
+            } else {
+                System.out.println("Invalid amount. Please enter a positive number.");
+            }
+        }
+
+        Transaction transaction = new Transaction(date, description, amount, type);
+        user.transactions.add(transaction);
+        store.updateUser(user);
+        
+        System.out.println("\nTransaction added successfully!");
+        pausePrompt();
+    }
+    
+    private static boolean isValidDate(String dateStr) {
+        if (dateStr == null || dateStr.isEmpty()) return false;
+        try {
+            LocalDate.parse(dateStr, DATE_FORMATTER);
+            return true;
+        } catch (DateTimeParseException e) {
+            return false;
+        }
+    }
+    
+    private static Double tryToParseDouble(String text) {
+        try {
+            return Double.parseDouble(text);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+    
+    private static void pausePrompt() {
+        System.out.print("\nPress Enter to continue...");
+        scanner.nextLine();
     }
 }
