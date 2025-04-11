@@ -47,6 +47,26 @@ public class DataStore {
             String password = ((Element)nodeUser).getElementsByTagName("password").item(0).getTextContent();
             System.out.println(uname + "|" + password);
             user = new User(username, password);
+            
+            Node nodeTransactions = ((Element)nodeUser).getElementsByTagName("transactions").item(0);
+            
+            if (nodeTransactions != null && nodeTransactions.hasChildNodes()) {
+                NodeList transactions = nodeTransactions.getChildNodes();
+                for (int i = 0; i < transactions.getLength(); i++){
+                    Node nodeTransaction = transactions.item(i);
+                    if (nodeTransaction.getNodeType() == Node.TEXT_NODE) continue;
+                    var date = ((Element)nodeTransaction).getElementsByTagName("date").item(0).getTextContent();
+                    var description = ((Element)nodeTransaction).getElementsByTagName("description").item(0).getTextContent();
+                    var amount = Double.parseDouble(((Element)nodeTransaction).getElementsByTagName("amount").item(0).getTextContent());
+                    var type = TransactionType.valueOf(((Element)nodeTransaction).getElementsByTagName("type").item(0).getTextContent());
+                    
+                    Transaction transaction = new Transaction(date, description, amount, type);
+                    user.transactions.add(transaction);
+                }
+            }
+            
+            
+            
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -128,6 +148,56 @@ public class DataStore {
                 
                 docToFile(document, filename);
             }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    void updateUser(User user) {
+        Document doc;
+        try {
+            doc = docFromFile(filename);
+            
+            XPathFactory factory = XPathFactory.newInstance();
+            XPath xpath = factory.newXPath();
+            var query = String.format("//user[descendant::username[text()='%s']]", user.getUsername());
+            Node nodeUser = (Node) xpath
+                    .compile(query)
+                    .evaluate(doc, XPathConstants.NODE);
+            
+            if (nodeUser == null) return;
+            
+            Node nodeTransactions = ((Element)nodeUser).getElementsByTagName("transactions").item(0);
+            
+            if (nodeTransactions != null) {
+                nodeUser.removeChild(nodeTransactions);
+            }
+            
+            nodeTransactions = doc.createElement("transactions");
+            
+            for (int i = 0; i < user.transactions.size(); i++) {
+                Element nodeTransaction = doc.createElement("transaction");
+                Element date = doc.createElement("date");
+                date.appendChild(doc.createTextNode(user.transactions.get(i).getDate()));
+                Element description = doc.createElement("description");
+                description.appendChild(doc.createTextNode(user.transactions.get(i).getDescription()));
+                Element amount = doc.createElement("amount");
+                amount.appendChild(doc.createTextNode(user.transactions.get(i).getAmount() + ""));
+                Element type = doc.createElement("type");
+                type.appendChild(doc.createTextNode(user.transactions.get(i).getType().toString()));
+                
+                nodeTransaction.appendChild(date);
+                nodeTransaction.appendChild(description);
+                nodeTransaction.appendChild(amount);
+                nodeTransaction.appendChild(type);
+                
+                nodeTransactions.appendChild(nodeTransaction);
+            }
+            
+            nodeUser.appendChild(nodeTransactions);
+
+            docToFile(doc, filename);
+            
         } catch (Exception ex) {
             ex.printStackTrace();
         }

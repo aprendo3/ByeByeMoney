@@ -1,8 +1,47 @@
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
+
+enum TransactionType {
+    INCOME, EXPENSE
+}
+
+class Transaction {
+    private String date;
+    private String description;
+    private double amount;
+    TransactionType type;
+
+    public Transaction(String date, String description, double amount, TransactionType type) {
+        this.date = date;
+        this.description = description;
+        this.amount = amount;
+        this.type = type;
+    }
+
+    public String getDate() {
+        return date;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public double getAmount() {
+        return amount;
+    }
+
+    public TransactionType getType() {
+        return type;
+    }
+}
 
 class User {
     private String username;
     private String password;
+    public List<Transaction> transactions = new ArrayList<>();
 
     public User(String username, String password) {
         this.username = username;
@@ -18,6 +57,8 @@ class User {
     }
 }
 
+
+
 public class Main {
     static final String GREEN = "\033[32m";
     static final String RESET = "\033[0m";
@@ -25,12 +66,21 @@ public class Main {
     static final String BLUE = "\033[94m";
     static Scanner scanner = new Scanner(System.in);
     static boolean logged = false;
+    static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     public static void main(String[] args) {
         //showWelcomeMenu();
         DataStore store = new DataStore();
+        User user = store.getUser("u1");
+        //if (user != null) return;
         //store.addUser(new User("u1", "u"));
-        store.getUser("u1");
+        //user = store.getUser("u1");
+        Transaction transaction = new Transaction(LocalDate.now().format(DATE_FORMATTER), "", 5, TransactionType.EXPENSE);
+        user.transactions.add(transaction);
+        
+        store.updateUser(user);
+                
+        
     }
 
     private static void showUserMenu() {
