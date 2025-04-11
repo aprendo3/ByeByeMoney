@@ -67,20 +67,26 @@ public class Main {
     static Scanner scanner = new Scanner(System.in);
     static boolean logged = false;
     static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
+    
+    static DataStore store = new DataStore();
+    static User user = null;
 
     public static void main(String[] args) {
-        //showWelcomeMenu();
-        DataStore store = new DataStore();
-        User user = store.getUser("u1");
-        //if (user != null) return;
-        //store.addUser(new User("u1", "u"));
-        //user = store.getUser("u1");
-        Transaction transaction = new Transaction(LocalDate.now().format(DATE_FORMATTER), "", 5, TransactionType.EXPENSE);
-        user.transactions.add(transaction);
+        showWelcomeMenu();
         
-        store.updateUser(user);
-                
-        
+//        DataStore store = new DataStore();
+//        User user = store.getUser("u1");
+//        //if (user != null) return;
+//        //store.addUser(new User("u1", "u"));
+//        //user = store.getUser("u1");
+//        Transaction transaction = new Transaction(LocalDate.now().format(DATE_FORMATTER), "", 5, TransactionType.EXPENSE);
+//        user.transactions.add(transaction);
+//        store.updateUser(user);
+          
+          if ( logged && user != null) {
+              cleanScreen();
+              showUserMenu();
+          }
     }
 
     private static void showUserMenu() {
@@ -177,6 +183,9 @@ public class Main {
     }
     
     private static boolean addNewLogin(String username, String password) {
+        if (store.getUser(username) != null) return false;
+        
+        store.addUser(new User(username, password));
         return true;
     }
 
@@ -185,21 +194,22 @@ public class Main {
         String username = scanner.nextLine();
         System.out.print("Enter your password: ");
         String password = scanner.nextLine();
-//        if (tryLogin(username, password)) {
-//            System.out.println("Login successful!");
-//            currentUsername = username;
-//            logged = true;
-//        } else {
-//            System.out.println("Incorrect username or password. Please try again.");
-//            logged = false;
-//        }
+        
+        if (tryLogin(username, password)) {
+            System.out.println("Login successful!");
+            logged = true;
+        } else {
+            System.out.println("Incorrect username or password. Please try again.");
+            logged = false;
+        }
         return logged;
     }
     
-//    private static boolean tryLogin(String username, String password) {
-//        for (int i = 0; i < logins.size(); i+=1)
-//            if (logins.get(i).equals(username) && logins.get(i + 1).equals(password))
-//                return true;
-//        return false;
-//    }
+    private static boolean tryLogin(String username, String password) {
+        user = store.getUser(username);
+        if (user != null && user.getPassword().equals(password)) return true;
+        
+        user = null;
+        return false;
+    }
 }
