@@ -37,6 +37,15 @@ class Transaction {
     public TransactionType getType() {
         return type;
     }
+    
+    @Override
+    public String toString() {
+        return String.format("%s | %-15s | %8.2f | %s",
+                date,
+                description.substring(0, Math.min(description.length(), 15)),
+                (type == TransactionType.EXPENSE ? -1 : 1) * amount,
+                type);
+    }
 }
 
 class User {
@@ -109,6 +118,7 @@ public class Main {
                 cleanScreen();
                 break;
             case "v":
+                showTransactions();
                 cleanScreen();
                 break;
             case "q":
@@ -292,5 +302,22 @@ public class Main {
     private static void pausePrompt() {
         System.out.print("\nPress Enter to continue...");
         scanner.nextLine();
+    }
+    
+    private static void showTransactions() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sView Transactions%s\n\n", BLUE, RED, BLUE, RESET);
+
+        System.out.println("Date     | Description     |   Amount | Type");
+        System.out.println("---------+-----------------+----------+---------");
+        
+        for (int i = 0; i < user.transactions.size(); i++) {
+            System.out.println(user.transactions.get(i));
+        }
+        
+        System.out.println("\n---------------------------------------------------------");
+        
+
+        pausePrompt();
     }
 }
