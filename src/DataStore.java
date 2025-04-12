@@ -1,4 +1,3 @@
-
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -15,6 +14,8 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import javax.xml.transform.OutputKeys;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
@@ -209,6 +210,100 @@ public class DataStore {
 
         } catch (Exception ex) {
             ex.printStackTrace();
+        }
+    }
+
+    public void saveCategories(List<String> incomeCats, List<String> expenseCats) {
+        Document doc;
+        try {
+            doc = docFromFile(filename);
+
+            Node categoriesNode = doc.getDocumentElement().getElementsByTagName("categories").item(0);
+
+            if (categoriesNode != null) {
+                doc.getDocumentElement().removeChild(categoriesNode);
+            }
+
+            Element categories = doc.createElement("categories");
+
+            for (String category : incomeCats) {
+                Element categoryNode = doc.createElement("category");
+                Element name = doc.createElement("name");
+                name.appendChild(doc.createTextNode(category));
+                Element type = doc.createElement("type");
+                type.appendChild(doc.createTextNode("INCOME"));
+
+                categoryNode.appendChild(name);
+                categoryNode.appendChild(type);
+                categories.appendChild(categoryNode);
+            }
+
+            for (String category : expenseCats) {
+                Element categoryNode = doc.createElement("category");
+                Element name = doc.createElement("name");
+                name.appendChild(doc.createTextNode(category));
+                Element type = doc.createElement("type");
+                type.appendChild(doc.createTextNode("EXPENSE"));
+
+                categoryNode.appendChild(name);
+                categoryNode.appendChild(type);
+                categories.appendChild(categoryNode);
+            }
+
+            doc.getDocumentElement().appendChild(categories);
+            docToFile(doc, filename);
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    public boolean loadCategories(List<String> incomeCats, List<String> expenseCats) {
+        Document doc;
+        try {
+            doc = docFromFile(filename);
+
+            NodeList categoryNodes = doc.getElementsByTagName("category");
+            if (categoryNodes == null || categoryNodes.getLength() == 0) {
+                return false;
+            }
+
+            List<String> loadedIncomeCats = new ArrayList<>();
+            List<String> loadedExpenseCats = new ArrayList<>();
+
+            for (int i = 0; i < categoryNodes.getLength(); i++) {
+                Element categoryNode = (Element) categoryNodes.item(i);
+                if (categoryNode.getNodeType() == Node.TEXT_NODE) continue;
+
+                Node nameNode = categoryNode.getElementsByTagName("name").item(0);
+                Node typeNode = categoryNode.getElementsByTagName("type").item(0);
+
+                if (nameNode != null && typeNode != null) {
+                    String name = nameNode.getTextContent();
+                    String type = typeNode.getTextContent();
+
+                    if ("INCOME".equals(type)) {
+                        loadedIncomeCats.add(name);
+                    } else if ("EXPENSE".equals(type)) {
+                        loadedExpenseCats.add(name);
+                    }
+                }
+            }
+
+            if (!loadedIncomeCats.isEmpty()) {
+                incomeCats.clear();
+                incomeCats.addAll(loadedIncomeCats);
+            }
+
+            if (!loadedExpenseCats.isEmpty()) {
+                expenseCats.clear();
+                expenseCats.addAll(loadedExpenseCats);
+            }
+
+            return !loadedIncomeCats.isEmpty() || !loadedExpenseCats.isEmpty();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return false;
         }
     }
 }

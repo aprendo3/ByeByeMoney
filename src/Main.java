@@ -75,8 +75,6 @@ class User {
     }
 }
 
-
-
 public class Main {
     static final String GREEN = "\033[32m";
     static final String RESET = "\033[0m";
@@ -91,17 +89,11 @@ public class Main {
 
     static List<String> incCats = new ArrayList<>(Arrays.asList("Salary", "Bonus", "Gift", "Investment", "Other"));
     static List<String> expCats = new ArrayList<>(Arrays.asList("Food", "Transport", "Housing", "Entertainment", "Utilities", "Other"));
+    static boolean categoriesSavedBefore = false;
 
     public static void main(String[] args) {
+        categoriesSavedBefore = store.loadCategories(incCats, expCats);
         showWelcomeMenu();
-
-        //User user = store.getUser("u1");
-        //if (user != null) return;
-        //store.addUser(new User("u1", "u"));
-        //user = store.getUser("u1");
-        //Transaction transaction = new Transaction(LocalDate.now().format(DATE_FORMATTER), "", 5, TransactionType.EXPENSE);
-        //user.transactions.add(transaction);
-        //store.updateUser(user);
 
         if ( logged && user != null) {
             cleanScreen();
@@ -118,6 +110,7 @@ public class Main {
             System.out.println();
             System.out.printf("[%sA%s] Add Transaction\n", GREEN, RESET);
             System.out.printf("[%sV%s] View Transactions\n", GREEN, RESET);
+            System.out.printf("[%sC%s] Manage Categories\n", GREEN, RESET);
             System.out.printf("[%sQ%s] Quit\n", RED, RESET);
             System.out.println();
             System.out.printf("Please select an %soption%s: ", BLUE, RESET);
@@ -130,6 +123,10 @@ public class Main {
                 break;
             case "v":
                 showTransactions();
+                cleanScreen();
+                break;
+            case "c":
+                manageCategories();
                 cleanScreen();
                 break;
             case "q":
@@ -389,5 +386,163 @@ public class Main {
         }
 
         cats.add(cat);
+    }
+
+    private static void manageCategories() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sManage Categories%s\n\n", BLUE, RED, BLUE, RESET);
+
+        boolean running = true;
+        while (running) {
+            showAllCategories();
+
+            System.out.println();
+            System.out.printf("[%sA%s] Add New Category\n", GREEN, RESET);
+            System.out.printf("[%sD%s] Delete Category\n", GREEN, RESET);
+            System.out.printf("[%sS%s] Save Categories\n", GREEN, RESET);
+            System.out.printf("[%sQ%s] Back to Main Menu\n", RED, RESET);
+            System.out.println();
+            System.out.printf("Please select an %soption%s: ", BLUE, RESET);
+
+            String choice = scanner.nextLine().toLowerCase();
+
+            switch (choice) {
+            case "a":
+                addNewCategory();
+                break;
+            case "d":
+                deleteCategory();
+                break;
+            case "s":
+                saveCategories();
+                break;
+            case "q":
+                running = false;
+                break;
+            default:
+                System.out.println("Invalid choice. Please try again.");
+                break;
+            }
+        }
+    }
+
+    private static void showAllCategories() {
+        System.out.println("Available Categories:\n");
+        for (String category : incCats) {
+            System.out.printf("  %s (INCOME)\n", category);
+        }
+
+        for (String category : expCats) {
+            System.out.printf("  %s (EXPENSE)\n", category);
+        }
+    }
+
+    private static void addNewCategory() {
+        System.out.println("\nAdd New Category");
+        System.out.print("Enter category type (I for Income, E for Expense): ");
+        String typeChoice = scanner.nextLine().toUpperCase();
+
+        TransactionType type;
+        if ("I".equals(typeChoice)) {
+            type = TransactionType.INCOME;
+        } else if ("E".equals(typeChoice)) {
+            type = TransactionType.EXPENSE;
+        } else {
+            System.out.println("Invalid type. Please enter I or E.");
+            return;
+        }
+
+        String newCategory = promptForNewCategory();
+        addCustomCategory(type, newCategory);
+
+        if (categoriesSavedBefore) {
+            store.saveCategories(incCats, expCats);
+        }
+
+        System.out.println("Category added successfully!");
+        pausePrompt();
+    }
+
+    private static void deleteCategory() {
+        System.out.println("\nDelete Category");
+        System.out.print("Enter category type (I for Income, E for Expense): ");
+        String typeChoice = scanner.nextLine().toUpperCase();
+
+        List<String> categories;
+        TransactionType type;
+        if ("I".equals(typeChoice)) {
+            categories = incCats;
+            type = TransactionType.INCOME;
+        } else if ("E".equals(typeChoice)) {
+            categories = expCats;
+            type = TransactionType.EXPENSE;
+        } else {
+            System.out.println("Invalid type. Please enter I or E.");
+            return;
+        }
+
+        if (categories.isEmpty()) {
+            System.out.println("No categories available to delete.");
+            pausePrompt();
+            return;
+        }
+
+        System.out.println("\nSelect category to delete:");
+        for (int i = 0; i < categories.size(); i++) {
+            System.out.printf("%d. %s\n", i + 1, categories.get(i));
+        }
+
+        System.out.print("Enter category number: ");
+        String input = scanner.nextLine();
+        Integer choice = tryToParse(input);
+
+        if (choice != null && choice >= 1 && choice <= categories.size()) {
+            String categoryToRemove = categories.get(choice - 1);
+
+            if (isCategoryInUse(categoryToRemove, type)) {
+                System.out.printf("Cannot delete category '%s' because it is in use by one or more transactions.\n", categoryToRemove);
+            } else {
+                categories.remove(choice - 1);
+
+                if (categoriesSavedBefore) {
+                    store.saveCategories(incCats, expCats);
+                }
+
+                System.out.printf("Category '%s' deleted successfully!\n", categoryToRemove);
+            }
+        } else {
+            System.out.println("Invalid choice.");
+        }
+
+        pausePrompt();
+    }
+
+    private static void saveCategories() {
+        updateFromTransactions();
+        store.saveCategories(incCats, expCats);
+        categoriesSavedBefore = true;
+
+        System.out.println("Categories saved successfully!");
+        pausePrompt();
+    }
+
+    private static boolean isCategoryInUse(String category, TransactionType type) {
+        for (Transaction transaction : user.transactions) {
+            if (transaction.getType() == type &&
+                category.equalsIgnoreCase(transaction.getCategory())) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void updateFromTransactions() {
+        for (Transaction transaction : user.transactions) {
+            String category = transaction.getCategory();
+            if (category != null && !category.isEmpty()) {
+                addCustomCategory(transaction.getType(), category);
+            }
+        }
     }
 }
