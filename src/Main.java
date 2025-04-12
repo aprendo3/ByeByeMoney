@@ -13,13 +13,15 @@ class Transaction {
     private String date;
     private String description;
     private double amount;
+    private String category;
     TransactionType type;
 
-    public Transaction(String date, String description, double amount, TransactionType type) {
+    public Transaction(String date, String description, double amount, TransactionType type, String category) {
         this.date = date;
         this.description = description;
         this.amount = amount;
         this.type = type;
+        this.category = category;
     }
 
     public String getDate() {
@@ -37,13 +39,18 @@ class Transaction {
     public TransactionType getType() {
         return type;
     }
-    
+
+    public String getCategory() {
+        return category;
+    }
+
     @Override
     public String toString() {
-        return String.format("%s | %-15s | %8.2f | %s",
+        return String.format("%s | %-15s | %8.2f | %-10s | %s",
                 date,
                 description.substring(0, Math.min(description.length(), 15)),
                 (type == TransactionType.EXPENSE ? -1 : 1) * amount,
+                category,
                 type);
     }
 }
@@ -77,13 +84,16 @@ public class Main {
     static Scanner scanner = new Scanner(System.in);
     static boolean logged = false;
     static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
-    
+
     static DataStore store = new DataStore();
     static User user = null;
 
+    static final String[] INCOME_CATEGORIES = {"Salary", "Bonus", "Gift", "Investment", "Other"};
+    static final String[] EXPENSE_CATEGORIES = {"Food", "Transport", "Housing", "Entertainment", "Utilities", "Other"};
+
     public static void main(String[] args) {
         showWelcomeMenu();
-        
+
         //User user = store.getUser("u1");
         //if (user != null) return;
         //store.addUser(new User("u1", "u"));
@@ -91,7 +101,7 @@ public class Main {
         //Transaction transaction = new Transaction(LocalDate.now().format(DATE_FORMATTER), "", 5, TransactionType.EXPENSE);
         //user.transactions.add(transaction);
         //store.updateUser(user);
-        
+
         if ( logged && user != null) {
             cleanScreen();
             showUserMenu();
@@ -179,11 +189,11 @@ public class Main {
         String username = scanner.nextLine();
         System.out.print("Enter your password: ");
         String password = scanner.nextLine();
-        
-        if(username == null || username.trim().isBlank() 
+
+        if(username == null || username.trim().isBlank()
             || password == null || password.trim().isBlank()) {
             System.out.println("Registration Failed! username or password not be empty");
-            
+
             return;
         }
 
@@ -192,10 +202,10 @@ public class Main {
         else
             System.out.println("Registration Failed! username already exists.");
     }
-    
+
     private static boolean addNewLogin(String username, String password) {
         if (store.getUser(username) != null) return false;
-        
+
         store.addUser(new User(username, password));
         return true;
     }
@@ -205,7 +215,7 @@ public class Main {
         String username = scanner.nextLine();
         System.out.print("Enter your password: ");
         String password = scanner.nextLine();
-       
+
         if (tryLogin(username, password)) {
             System.out.println("Login successful!");
             logged = true;
@@ -215,11 +225,11 @@ public class Main {
         }
         return logged;
     }
-    
+
     private static boolean tryLogin(String username, String password) {
         user = store.getUser(username);
         if (user != null && user.getPassword().equals(password)) return true;
-        
+
         user = null;
         return false;
     }
@@ -273,14 +283,16 @@ public class Main {
             }
         }
 
-        Transaction transaction = new Transaction(date, description, amount, type);
+        String category = promptForCategory(type);
+
+        Transaction transaction = new Transaction(date, description, amount, type, category);
         user.transactions.add(transaction);
         store.updateUser(user);
-        
+
         System.out.println("\nTransaction added successfully!");
         pausePrompt();
     }
-    
+
     private static boolean isValidDate(String dateStr) {
         if (dateStr == null || dateStr.isEmpty()) return false;
         try {
@@ -290,7 +302,7 @@ public class Main {
             return false;
         }
     }
-    
+
     private static Double tryToParseDouble(String text) {
         try {
             return Double.parseDouble(text);
@@ -298,26 +310,51 @@ public class Main {
             return null;
         }
     }
-    
+
     private static void pausePrompt() {
         System.out.print("\nPress Enter to continue...");
         scanner.nextLine();
     }
-    
+
     private static void showTransactions() {
         cleanScreen();
         System.out.printf("%sBye Bye Money%s > %sView Transactions%s\n\n", BLUE, RED, BLUE, RESET);
 
-        System.out.println("Date     | Description     |   Amount | Type");
-        System.out.println("---------+-----------------+----------+---------");
-        
+        System.out.println("Date     | Description     |   Amount | Category   | Type");
+        System.out.println("---------+-----------------+----------+------------+---------");
+
         for (int i = 0; i < user.transactions.size(); i++) {
             System.out.println(user.transactions.get(i));
         }
-        
-        System.out.println("\n---------------------------------------------------------");
-        
+
+        System.out.println("\n-----------------------------------------------------------------");
+
 
         pausePrompt();
+    }
+
+    private static String[] getCategoriesForType(TransactionType type) {
+        return type == TransactionType.INCOME ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+    }
+
+    private static String promptForCategory(TransactionType type) {
+        String[] categories = getCategoriesForType(type);
+
+        System.out.println("\nSelect a category:");
+        for (int i = 0; i < categories.length; i++) {
+            System.out.printf("%d. %s\n", i + 1, categories[i]);
+        }
+
+        while (true) {
+            System.out.print("Enter category number: ");
+            String input = scanner.nextLine();
+            Integer choice = tryToParse(input);
+
+            if (choice != null && choice >= 1 && choice <= categories.length) {
+                return categories[choice - 1];
+            } else {
+                System.out.println("Invalid choice. Please enter a number between 1 and " + categories.length);
+            }
+        }
     }
 }

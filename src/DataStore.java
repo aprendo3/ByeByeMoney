@@ -23,12 +23,12 @@ import javax.xml.xpath.XPathFactory;
 
 public class DataStore {
     String filename = "data/users.xml";
-    
+
     public DataStore() {
         init();
     }
-            
-    
+
+
     public User getUser(String username) {
         Document doc;
         User user = null;
@@ -40,16 +40,16 @@ public class DataStore {
             Node nodeUser = (Node) xpath
                     .compile(query)
                     .evaluate(doc, XPathConstants.NODE);
-            
+
             if (nodeUser == null) return null;
-            
+
             String uname = ((Element)nodeUser).getElementsByTagName("username").item(0).getTextContent();
             String password = ((Element)nodeUser).getElementsByTagName("password").item(0).getTextContent();
             System.out.println(uname + "|" + password);
             user = new User(username, password);
-            
+
             Node nodeTransactions = ((Element)nodeUser).getElementsByTagName("transactions").item(0);
-            
+
             if (nodeTransactions != null && nodeTransactions.hasChildNodes()) {
                 NodeList transactions = nodeTransactions.getChildNodes();
                 for (int i = 0; i < transactions.getLength(); i++){
@@ -59,22 +59,28 @@ public class DataStore {
                     var description = ((Element)nodeTransaction).getElementsByTagName("description").item(0).getTextContent();
                     var amount = Double.parseDouble(((Element)nodeTransaction).getElementsByTagName("amount").item(0).getTextContent());
                     var type = TransactionType.valueOf(((Element)nodeTransaction).getElementsByTagName("type").item(0).getTextContent());
-                    
-                    Transaction transaction = new Transaction(date, description, amount, type);
+
+                    String category = "Other";
+                    Node categoryNode = ((Element)nodeTransaction).getElementsByTagName("category").item(0);
+                    if (categoryNode != null) {
+                        category = categoryNode.getTextContent();
+                    }
+
+                    Transaction transaction = new Transaction(date, description, amount, type, category);
                     user.transactions.add(transaction);
                 }
             }
-            
-            
-            
+
+
+
         } catch (Exception ex) {
             ex.printStackTrace();
         }
- 
-        
+
+
         return user;
     }
-    
+
     public void addUser(User user) {
         Document doc;
         try {
@@ -91,12 +97,12 @@ public class DataStore {
                     .appendChild(userNode);
 
             docToFile(doc, filename);
-            
+
         } catch (Exception ex) {
             ex.printStackTrace();
         }
     }
-    
+
     private void removeWhitespaceNodes(Node node) {
     NodeList list = node.getChildNodes();
     for (int i = list.getLength()-1; i >= 0; i--) {
@@ -110,7 +116,7 @@ public class DataStore {
         }
     }
 }
-    
+
     private void docToFile(Document doc, String nameFile) throws TransformerException {
         removeWhitespaceNodes(doc.getDocumentElement());
         Transformer transformer = TransformerFactory.newInstance().newTransformer();
@@ -121,13 +127,13 @@ public class DataStore {
 
     public Document docFromFile(String nameFile) throws SAXException, IOException, ParserConfigurationException {
         File xmlFile = new File(nameFile);
-        DocumentBuilderFactory factory = 
+        DocumentBuilderFactory factory =
                 DocumentBuilderFactory.newDefaultInstance();
-                
+
         factory.setIgnoringElementContentWhitespace(true);
         Document doc = factory.newDocumentBuilder().parse(xmlFile);
         doc.getDocumentElement().normalize();
-        
+
         return doc;
     }
 
@@ -139,13 +145,13 @@ public class DataStore {
                     .newDefaultInstance()
                     .newDocumentBuilder()
                     .newDocument();
-                
+
                 Element root = document.createElement("data");
                 document.appendChild(root);
 
                 Element users = document.createElement("users");
                 root.appendChild(users);
-                
+
                 docToFile(document, filename);
             }
         } catch (Exception ex) {
@@ -157,24 +163,24 @@ public class DataStore {
         Document doc;
         try {
             doc = docFromFile(filename);
-            
+
             XPathFactory factory = XPathFactory.newInstance();
             XPath xpath = factory.newXPath();
             var query = String.format("//user[descendant::username[text()='%s']]", user.getUsername());
             Node nodeUser = (Node) xpath
                     .compile(query)
                     .evaluate(doc, XPathConstants.NODE);
-            
+
             if (nodeUser == null) return;
-            
+
             Node nodeTransactions = ((Element)nodeUser).getElementsByTagName("transactions").item(0);
-            
+
             if (nodeTransactions != null) {
                 nodeUser.removeChild(nodeTransactions);
             }
-            
+
             nodeTransactions = doc.createElement("transactions");
-            
+
             for (int i = 0; i < user.transactions.size(); i++) {
                 Element nodeTransaction = doc.createElement("transaction");
                 Element date = doc.createElement("date");
@@ -185,19 +191,22 @@ public class DataStore {
                 amount.appendChild(doc.createTextNode(user.transactions.get(i).getAmount() + ""));
                 Element type = doc.createElement("type");
                 type.appendChild(doc.createTextNode(user.transactions.get(i).getType().toString()));
-                
+                Element category = doc.createElement("category");
+                category.appendChild(doc.createTextNode(user.transactions.get(i).getCategory()));
+
                 nodeTransaction.appendChild(date);
                 nodeTransaction.appendChild(description);
                 nodeTransaction.appendChild(amount);
                 nodeTransaction.appendChild(type);
-                
+                nodeTransaction.appendChild(category);
+
                 nodeTransactions.appendChild(nodeTransaction);
             }
-            
+
             nodeUser.appendChild(nodeTransactions);
 
             docToFile(doc, filename);
-            
+
         } catch (Exception ex) {
             ex.printStackTrace();
         }
