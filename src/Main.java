@@ -2,6 +2,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
 
@@ -88,8 +89,8 @@ public class Main {
     static DataStore store = new DataStore();
     static User user = null;
 
-    static final String[] INCOME_CATEGORIES = {"Salary", "Bonus", "Gift", "Investment", "Other"};
-    static final String[] EXPENSE_CATEGORIES = {"Food", "Transport", "Housing", "Entertainment", "Utilities", "Other"};
+    static List<String> incCats = new ArrayList<>(Arrays.asList("Salary", "Bonus", "Gift", "Investment", "Other"));
+    static List<String> expCats = new ArrayList<>(Arrays.asList("Food", "Transport", "Housing", "Entertainment", "Utilities", "Other"));
 
     public static void main(String[] args) {
         showWelcomeMenu();
@@ -334,7 +335,8 @@ public class Main {
     }
 
     private static String[] getCategoriesForType(TransactionType type) {
-        return type == TransactionType.INCOME ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+        List<String> cats = type == TransactionType.INCOME ? incCats : expCats;
+        return cats.toArray(new String[0]);
     }
 
     private static String promptForCategory(TransactionType type) {
@@ -344,17 +346,48 @@ public class Main {
         for (int i = 0; i < categories.length; i++) {
             System.out.printf("%d. %s\n", i + 1, categories[i]);
         }
+        System.out.printf("[%sA%s] Add New Category\n", GREEN, RESET);
 
         while (true) {
-            System.out.print("Enter category number: ");
+            System.out.print("Enter category number or A for add new: ");
             String input = scanner.nextLine();
+
+            if (input.equalsIgnoreCase("A")) {
+                String newCategory = promptForNewCategory();
+                addCustomCategory(type, newCategory);
+                return newCategory;
+            }
+
             Integer choice = tryToParse(input);
 
             if (choice != null && choice >= 1 && choice <= categories.length) {
                 return categories[choice - 1];
             } else {
-                System.out.println("Invalid choice. Please enter a number between 1 and " + categories.length);
+                System.out.println("Invalid choice. Please enter a number between 1 and " + categories.length + " or A.");
             }
         }
+    }
+
+    private static String promptForNewCategory() {
+        while (true) {
+            System.out.print("Enter new category name: ");
+            String newCategory = scanner.nextLine().trim();
+
+            if (!newCategory.isEmpty()) {
+                return newCategory;
+            } else {
+                System.out.println("Category name cannot be empty. Please try again.");
+            }
+        }
+    }
+
+    private static void addCustomCategory(TransactionType type, String cat) {
+        List<String> cats = type == TransactionType.INCOME ? incCats : expCats;
+
+        if (cats.stream().anyMatch(c -> c.equalsIgnoreCase(cat))) {
+            return;
+        }
+
+        cats.add(cat);
     }
 }
