@@ -149,12 +149,12 @@ public class Main {
             System.out.println("\033[94mWelcome to Bye Bye Money\033[0m");
             System.out.println("=====================================");
             System.out.println();
-            System.out.printf("[%sA%s] Add Transaction\n", GREEN, RESET);
-            System.out.printf("[%sV%s] View Transactions\n", GREEN, RESET);
-            System.out.printf("[%sC%s] Manage Categories\n", GREEN, RESET);
-            System.out.printf("[%sG%s] Manage Goals\n", GREEN, RESET);
-            System.out.printf("[%sS%s] Summary Report\n", GREEN, RESET);
-            System.out.printf("[%sQ%s] Quit\n", RED, RESET);
+            System.out.printf("[%sA%s] Add Transaction%n", GREEN, RESET);
+            System.out.printf("[%sV%s] View/Manage Transactions%n", GREEN, RESET);
+            System.out.printf("[%sS%s] Summary Report%n", GREEN, RESET);
+            System.out.printf("[%sC%s] Manage Categories%n", GREEN, RESET);
+            System.out.printf("[%sG%s] Manage Goals%n", GREEN, RESET);
+            System.out.printf("[%sQ%s] Quit%n", RED, RESET);
             System.out.println();
             System.out.printf("Please select an %soption%s: ", BLUE, RESET);
             String choice = scanner.nextLine().toLowerCase();
@@ -209,9 +209,9 @@ public class Main {
             System.out.println("\033[94mWelcome to Bye Bye Money App\033[0m");
             System.out.println("=====================================");
             System.out.println();
-            System.out.printf("[%sL%s] Login\n", GREEN, RESET);
-            System.out.printf("[%sR%s] Register\n", GREEN, RESET);
-            System.out.printf("[%sQ%s] Quit\n", RED, RESET);
+            System.out.printf("[%sL%s] Login%n", GREEN, RESET);
+            System.out.printf("[%sR%s] Register%n", GREEN, RESET);
+            System.out.printf("[%sQ%s] Quit%n", RED, RESET);
             System.out.println();
             System.out.printf("Please select an %soption%s: ", BLUE, RESET);
             String choice = scanner.nextLine().toLowerCase();
@@ -367,7 +367,7 @@ public class Main {
 
     private static void showTransactions() {
         cleanScreen();
-        System.out.printf("%sBye Bye Money%s > %sView Transactions%s\n\n", BLUE, RED, BLUE, RESET);
+        System.out.printf("%sBye Bye Money%s > %sView/Manage Transactions%s\n\n", BLUE, RED, BLUE, RESET);
 
         if (user.transactions.isEmpty()) {
             System.out.println("No transactions found.");
@@ -379,14 +379,14 @@ public class Main {
         System.out.println("---+---------+-----------------+----------+------------+---------");
 
         for (int i = 0; i < user.transactions.size(); i++) {
-            System.out.printf("%2d | %s%n", i + 1, user.transactions.get(i));
+            System.out.printf("%s%2d%s | %s%n", GREEN, i + 1, RESET, user.transactions.get(i));
         }
 
         System.out.println("-----------------------------------------------------------------");
 
-        System.out.printf("[%sE%s] Edit Transaction\n", GREEN, RESET);
-        System.out.printf("[%sD%s] Delete Transaction\n", GREEN, RESET);
-        System.out.printf("[%sB%s] Back to Main Menu\n", RED, RESET);
+        System.out.printf("[%sE%s] Edit Transaction%n", GREEN, RESET);
+        System.out.printf("[%sD%s] Delete Transaction%n", GREEN, RESET);
+        System.out.printf("[%sB%s] Back to Main Menu%n", RED, RESET);
         System.out.printf("Please select an %soption%s: ", BLUE, RESET);
 
         String choice = scanner.nextLine().toLowerCase();
@@ -416,9 +416,9 @@ public class Main {
 
         System.out.println("\nSelect a category:");
         for (int i = 0; i < categories.length; i++) {
-            System.out.printf("%d. %s\n", i + 1, categories[i]);
+            System.out.printf("%s%d%s. %s%n", GREEN, i + 1, RESET, categories[i]);
         }
-        System.out.printf("[%sA%s] Add New Category\n", GREEN, RESET);
+        System.out.printf("[%sA%s] Add New Category%n", GREEN, RESET);
 
         while (true) {
             System.out.print("Enter category number or A for add new: ");
@@ -472,10 +472,10 @@ public class Main {
             showAllCategories();
 
             System.out.println();
-            System.out.printf("[%sA%s] Add New Category\n", GREEN, RESET);
-            System.out.printf("[%sD%s] Delete Category\n", GREEN, RESET);
-            System.out.printf("[%sS%s] Save Categories\n", GREEN, RESET);
-            System.out.printf("[%sQ%s] Back to Main Menu\n", RED, RESET);
+            System.out.printf("[%sA%s] Add New Category%n", GREEN, RESET);
+            System.out.printf("[%sD%s] Delete Category%n", GREEN, RESET);
+            System.out.printf("[%sS%s] Save Categories%n", GREEN, RESET);
+            System.out.printf("[%sQ%s] Back to Main Menu%n", RED, RESET);
             System.out.println();
             System.out.printf("Please select an %soption%s: ", BLUE, RESET);
 
@@ -504,11 +504,11 @@ public class Main {
     private static void showAllCategories() {
         System.out.println("Available Categories:\n");
         for (String category : incCats) {
-            System.out.printf("  %s (INCOME)\n", category);
+            System.out.printf("  %s (INCOME)%n", category);
         }
 
         for (String category : expCats) {
-            System.out.printf("  %s (EXPENSE)\n", category);
+            System.out.printf("  %s (EXPENSE)%n", category);
         }
     }
 
@@ -564,7 +564,7 @@ public class Main {
 
         System.out.println("\nSelect category to delete:");
         for (int i = 0; i < categories.size(); i++) {
-            System.out.printf("%d. %s\n", i + 1, categories.get(i));
+            System.out.printf("%s%d%s. %s%n", GREEN, i + 1, RESET, categories.get(i));
         }
 
         System.out.print("Enter category number: ");
@@ -575,7 +575,7 @@ public class Main {
             String categoryToRemove = categories.get(choice - 1);
 
             if (isCategoryInUse(categoryToRemove, type)) {
-                System.out.printf("Cannot delete category '%s' because it is in use by one or more transactions.\n", categoryToRemove);
+                System.out.printf("Cannot delete category '%s' because it is in use by one or more transactions.%n", categoryToRemove);
             } else {
                 categories.remove(choice - 1);
 
@@ -583,7 +583,7 @@ public class Main {
                     store.saveCategories(incCats, expCats);
                 }
 
-                System.out.printf("Category '%s' deleted successfully!\n", categoryToRemove);
+                System.out.printf("Category '%s' deleted successfully!%n", categoryToRemove);
             }
         } else {
             System.out.println("Invalid choice.");
@@ -623,15 +623,15 @@ public class Main {
 
     private static void manageGoals() {
         cleanScreen();
-        System.out.printf("%sBye Bye Money%s > %sManage Goals%s\n\n", BLUE, RED, BLUE, RESET);
+        System.out.printf("%sBye Bye Money%s > %sManage Goals%s%n%n", BLUE, RED, BLUE, RESET);
 
         boolean running = true;
         while (running) {
             System.out.println();
-            System.out.printf("[%sA%s] Add/Update Goal\n", GREEN, RESET);
-            System.out.printf("[%sD%s] Delete Goal\n", GREEN, RESET);
-            System.out.printf("[%sL%s] List Goals\n", GREEN, RESET);
-            System.out.printf("[%sQ%s] Back to Main Menu\n", RED, RESET);
+            System.out.printf("[%sA%s] Add/Update Goal%n", GREEN, RESET);
+            System.out.printf("[%sD%s] Delete Goal%n", GREEN, RESET);
+            System.out.printf("[%sL%s] List Goals%n", GREEN, RESET);
+            System.out.printf("[%sQ%s] Back to Main Menu%n", RED, RESET);
             System.out.println();
             System.out.printf("Please select an %soption%s: ", BLUE, RESET);
 
@@ -670,7 +670,7 @@ public class Main {
         System.out.println("Current Budget Goals:\n");
         for (int i = 0; i < user.goals.size(); i++) {
             BudgetGoal goal = user.goals.get(i);
-            System.out.printf("%d. %s - Goal: $%.2f\n", i + 1, goal.getCategory(), goal.getAmount());
+            System.out.printf("%s%d%s. %s - Goal: $%.2f%n", GREEN, i + 1, RESET, goal.getCategory(), goal.getAmount());
         }
 
         pausePrompt();
@@ -688,7 +688,7 @@ public class Main {
 
         System.out.println("Select an expense category:\n");
         for (int i = 0; i < expCats.size(); i++) {
-            System.out.printf("%d. %s\n", i + 1, expCats.get(i));
+            System.out.printf("%s%d%s. %s%n", GREEN, i + 1, RESET, expCats.get(i));
         }
 
         System.out.print("\nEnter category number: ");
@@ -725,10 +725,10 @@ public class Main {
 
         if (existingGoal != null) {
             existingGoal.setAmount(amount);
-            System.out.printf("Budget goal for '%s' updated to $%.2f\n", category, amount);
+            System.out.printf("Budget goal for '%s' updated to $%.2f%n", category, amount);
         } else {
             user.goals.add(new BudgetGoal(category, amount));
-            System.out.printf("Budget goal for '%s' set to $%.2f\n", category, amount);
+            System.out.printf("Budget goal for '%s' set to $%.2f%n", category, amount);
         }
 
         store.updateUser(user);
@@ -748,7 +748,7 @@ public class Main {
         System.out.println("Select a goal to delete:\n");
         for (int i = 0; i < user.goals.size(); i++) {
             BudgetGoal goal = user.goals.get(i);
-            System.out.printf("%d. %s - Goal: $%.2f\n", i + 1, goal.getCategory(), goal.getAmount());
+            System.out.printf("%s%d%s. %s - Goal: $%.2f%n", GREEN, i + 1, RESET, goal.getCategory(), goal.getAmount());
         }
 
         System.out.print("\nEnter goal number: ");
