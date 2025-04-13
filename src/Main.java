@@ -219,6 +219,7 @@ public class Main {
             System.out.printf("[%sA%s] Add Transaction%n", GREEN, RESET);
             System.out.printf("[%sV%s] View/Manage Transactions%n", GREEN, RESET);
             System.out.printf("[%sS%s] Summary Report%n", GREEN, RESET);
+            System.out.printf("[%sT%s] Quick Totals%n", GREEN, RESET);
             System.out.printf("[%sC%s] Manage Categories%n", GREEN, RESET);
             System.out.printf("[%sG%s] Manage Goals%n", GREEN, RESET);
             System.out.printf("[%sR%s] Manage Recurring%n", GREEN, RESET);
@@ -247,6 +248,10 @@ public class Main {
                 break;
             case "s":
                 showSummaryReport();
+                cleanScreen();
+                break;
+            case "t":
+                showQuickTotals();
                 cleanScreen();
                 break;
             case "r":
@@ -1187,6 +1192,92 @@ public class Main {
         } else {
             System.out.println("\nNo transactions were logged.");
         }
+
+        pausePrompt();
+    }
+
+    private static void showQuickTotals() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sQuick Totals%s%n%n", BLUE, RED, BLUE, RESET);
+
+        System.out.printf("[%sM%s] This Month%n", GREEN, RESET);
+        System.out.printf("[%sY%s] This Year%n", GREEN, RESET);
+        System.out.printf("[%sQ%s] Back to Main Menu%n", RED, RESET);
+        System.out.println();
+        System.out.printf("Please select an %soption%s: ", BLUE, RESET);
+
+        String choice = scanner.nextLine().toLowerCase();
+
+        switch (choice) {
+        case "m":
+            showMonthTotals();
+            break;
+        case "y":
+            showYearTotals();
+            break;
+        case "q":
+            return;
+        default:
+            System.out.println("Invalid choice. Please try again.");
+            pausePrompt();
+            showQuickTotals();
+            break;
+        }
+    }
+
+    private static void showMonthTotals() {
+        LocalDate today = LocalDate.now();
+        LocalDate firstDayOfMonth = today.withDayOfMonth(1);
+        LocalDate lastDayOfMonth = today.withDayOfMonth(today.lengthOfMonth());
+
+        String startDate = firstDayOfMonth.format(DATE_FORMATTER);
+        String endDate = lastDayOfMonth.format(DATE_FORMATTER);
+
+        showPeriodTotals(startDate, endDate, "This Month");
+    }
+
+    private static void showYearTotals() {
+        LocalDate today = LocalDate.now();
+        LocalDate firstDayOfYear = today.withDayOfYear(1);
+        LocalDate lastDayOfYear = today.withDayOfYear(today.lengthOfYear());
+
+        String startDate = firstDayOfYear.format(DATE_FORMATTER);
+        String endDate = lastDayOfYear.format(DATE_FORMATTER);
+
+        showPeriodTotals(startDate, endDate, "This Year");
+    }
+
+    private static void showPeriodTotals(String startDate, String endDate, String periodName) {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sQuick Totals%s > %s%s%s%n%n",
+                BLUE, RED, BLUE, RESET, BLUE, periodName, RESET);
+
+        List<Transaction> filtered = applyTransactionFilters(user.transactions, null, null, startDate, endDate);
+
+        if (filtered.isEmpty()) {
+            System.out.printf("No transactions found for period: %s to %s%n", startDate, endDate);
+            pausePrompt();
+            return;
+        }
+
+        double totalIncome = 0;
+        double totalExpenses = 0;
+
+        for (Transaction transaction : filtered) {
+            if (transaction.getType() == TransactionType.INCOME) {
+                totalIncome += transaction.getAmount();
+            } else {
+                totalExpenses += transaction.getAmount();
+            }
+        }
+
+        double netBalance = totalIncome - totalExpenses;
+        String netColor = netBalance >= 0 ? GREEN : RED;
+
+        System.out.printf("Quick Totals (Period: %s-%s):%n%n", startDate, endDate);
+        System.out.printf("Total Income:  %s$%10.2f%s%n", GREEN, totalIncome, RESET);
+        System.out.printf("Total Expenses: %s$%10.2f%s%n", RED, totalExpenses, RESET);
+        System.out.printf("Net Balance:    %s$%10.2f%s%n", netColor, netBalance, RESET);
 
         pausePrompt();
     }

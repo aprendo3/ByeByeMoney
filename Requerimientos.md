@@ -1,6 +1,6 @@
 # Caracteresticas (Requerimientos)
 
-[X] Importar películas al sistema desde archivos externos
+[X] Importar Transacciones al sistema desde archivos externos (CSV)
 [X] Sistema de cuentas de usuario: Login y Registro de distintos usuarios.
 [X] Persistencia de Datos XML: Almacenar cuentas de usuario, transacciones, categorías y metas (presupuestos) en un archivo XML.
 [X] Añadir Transacción: Registre entradas de Ingresos o Gastos con fecha, descripción, monto y categoría.
@@ -19,7 +19,7 @@
 [X] Ordenar transacciones: Ordene la vista de transacciones por Fecha, Descriptio
 
 [X] Configuración de transacciones recurrentes: Me permite definir facturas (como alquiler, suscripciones) que se producen regularmente para que pueda registrarlas rápidamente cada mes en lugar de escribirlas.
-[ ] Vista rápida de totales mensuales/año: Una opción súper rápida para ver el total de ingresos/gastos de este mes o este año sin tener que configurar el informe completo.
+[X] Vista rápida de totales mensuales/año: Una opción súper rápida para ver el total de ingresos/gastos de este mes o este año sin tener que configurar el informe completo.
 [ ] Informe de tendencias de gasto por categoría: Muestra cuánto he gastado en una categoría específica (como 'Comida') en los últimos 6 o 12 meses.
 [ ] Informe de comparación entre periodos: Me permite comparar fácilmente los gastos/ingresos de este mes con los del mes pasado, o los de este año con los del año pasado.
 [ ] Soporte de subcategorías: Permite anidar categorías (por ejemplo, Entretenimiento:Cine, Entretenimiento:Cena) para un seguimiento más detallado.
