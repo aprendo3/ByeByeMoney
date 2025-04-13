@@ -378,19 +378,44 @@ public class Main {
     private static void showTransactions() {
         int pageSize = 5;
         int currentPage = 1;
-        int totalItems = user.transactions.size();
-        int totalPages = (totalItems + pageSize - 1) / pageSize;
 
-        if (totalPages == 0) {
-            totalPages = 1;
-        }
+        TransactionType filterType = null;
+        String filterCategory = null;
+        String filterStartDate = null;
+        String filterEndDate = null;
 
         boolean viewing = true;
 
         while (viewing) {
+            List<Transaction> filtered = applyTransactionFilters(user.transactions, filterType, filterCategory, filterStartDate, filterEndDate);
+
+            int totalItems = filtered.size();
+            int totalPages = (totalItems + pageSize - 1) / pageSize;
+
+            if (totalPages == 0) {
+                totalPages = 1;
+            }
+
             cleanScreen();
-            System.out.printf("%sBye Bye Money%s > %sView/Manage Transactions%s (Page %s%d%s/%s%d%s)%n%n",
-                    BLUE, RED, BLUE, RESET, GREEN, currentPage, RESET, GREEN, totalPages, RESET);
+
+            StringBuilder filterInfo = new StringBuilder();
+            if (filterType != null || filterCategory != null || filterStartDate != null) {
+                filterInfo.append(" (Filtered by");
+                if (filterType != null) {
+                    filterInfo.append(String.format(" Type: %s", filterType));
+                }
+                if (filterCategory != null) {
+                    filterInfo.append(String.format("%s Category: %s", filterType != null ? "," : "", filterCategory));
+                }
+                if (filterStartDate != null) {
+                    filterInfo.append(String.format("%s Date: %s", (filterType != null || filterCategory != null) ? "," : "",
+                            filterStartDate + (filterEndDate != null ? "-" + filterEndDate : "")));
+                }
+                filterInfo.append(")");
+            }
+
+            System.out.printf("%sBye Bye Money%s > %sView/Manage Transactions%s%s (Page %s%d%s/%s%d%s)%n%n",
+                    BLUE, RED, BLUE, RESET, filterInfo.toString(), GREEN, currentPage, RESET, GREEN, totalPages, RESET);
 
             if (user.transactions.isEmpty()) {
                 System.out.println("No transactions found.");
@@ -398,24 +423,31 @@ public class Main {
                 return;
             }
 
+            if (filtered.isEmpty()) {
+                System.out.println("No transactions match the current filters.");
+            }
+
             int startIndex = (currentPage - 1) * pageSize;
             int endIndex = Math.min(startIndex + pageSize, totalItems);
 
-            System.out.println("#  | Date     | Description     |   Amount | Category   | Type");
-            System.out.println("---+---------+-----------------+----------+------------+---------");
+            if (!filtered.isEmpty()) {
+                System.out.println("#  | Date     | Description     |   Amount | Category   | Type");
+                System.out.println("---+---------+-----------------+----------+------------+---------");
 
-            for (int i = startIndex; i < endIndex; i++) {
-                System.out.printf("%s%2d%s | %s%n", GREEN, i + 1, RESET, user.transactions.get(i));
+                for (int i = startIndex; i < endIndex; i++) {
+                    System.out.printf("%s%2d%s | %s%n", GREEN, i + 1, RESET, filtered.get(i));
+                }
+
+                System.out.println("-----------------------------------------------------------------");
+                System.out.printf("Showing transactions %s%d%s-%s%d%s of %s%d%s total\n\n",
+                        GREEN, startIndex + 1, RESET, GREEN, endIndex, RESET, GREEN, totalItems, RESET);
             }
-
-            System.out.println("-----------------------------------------------------------------");
-            System.out.printf("Showing transactions %s%d%s-%s%d%s of %s%d%s total\n\n",
-                    GREEN, startIndex + 1, RESET, GREEN, endIndex, RESET, GREEN, totalItems, RESET);
 
             System.out.printf("[%sE%s] Edit Transaction%n", GREEN, RESET);
             System.out.printf("[%sD%s] Delete Transaction%n", GREEN, RESET);
             System.out.printf("[%sX%s] Export Transactions%n", GREEN, RESET);
             System.out.printf("[%sI%s] Import Transactions%n", GREEN, RESET);
+            System.out.printf("[%sF%s] Filter Transactions%n", GREEN, RESET);
 
             if (currentPage < totalPages) {
                 System.out.printf("[%sN%s] Next Page%n", GREEN, RESET);
@@ -432,16 +464,36 @@ public class Main {
 
             switch (choice) {
             case "e":
-                editTransaction();
+                if (!filtered.isEmpty()) {
+                    promptForTransactionEdit(filtered);
+                } else {
+                    System.out.println("No transactions available to edit.");
+                    pausePrompt();
+                }
                 break;
             case "d":
-                deleteTransaction();
+                if (!filtered.isEmpty()) {
+                    promptForTransactionDelete(filtered);
+                } else {
+                    System.out.println("No transactions available to delete.");
+                    pausePrompt();
+                }
                 break;
             case "x":
                 exportTransactionsToCsv();
                 break;
             case "i":
                 importTransactionsFromCsv();
+                break;
+            case "f":
+                Object[] result = promptForFilters(filterType, filterCategory, filterStartDate, filterEndDate);
+                if (result != null) {
+                    filterType = result[0] != null ? (TransactionType) result[0] : null;
+                    filterCategory = (String) result[1];
+                    filterStartDate = (String) result[2];
+                    filterEndDate = (String) result[3];
+                    currentPage = 1;
+                }
                 break;
             case "n":
                 if (currentPage < totalPages) {
@@ -462,6 +514,277 @@ public class Main {
                 break;
             }
         }
+    }
+
+    private static List<Transaction> applyTransactionFilters(List<Transaction> transactions, TransactionType filterType, String filterCategory, String filterStartDate, String filterEndDate) {
+        if (filterType == null && filterCategory == null && filterStartDate == null) {
+            return transactions;
+        }
+
+        List<Transaction> result = new ArrayList<>();
+
+        for (Transaction transaction : transactions) {
+            boolean typeMatch = filterType == null || transaction.getType() == filterType;
+            boolean categoryMatch = filterCategory == null || transaction.getCategory().equalsIgnoreCase(filterCategory);
+            boolean dateMatch = true;
+
+            if (filterStartDate != null) {
+                LocalDate transactionDate = LocalDate.parse(transaction.getDate(), DATE_FORMATTER);
+                LocalDate startDate = LocalDate.parse(filterStartDate, DATE_FORMATTER);
+
+                if (filterEndDate != null) {
+                    LocalDate endDate = LocalDate.parse(filterEndDate, DATE_FORMATTER);
+                    dateMatch = !transactionDate.isBefore(startDate) && !transactionDate.isAfter(endDate);
+                } else {
+                    dateMatch = !transactionDate.isBefore(startDate);
+                }
+            }
+
+            if (typeMatch && categoryMatch && dateMatch) {
+                result.add(transaction);
+            }
+        }
+
+        return result;
+    }
+
+    private static void promptForTransactionEdit(List<Transaction> transactions) {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sEdit Transaction%s%n%n", BLUE, RED, BLUE, RESET);
+
+        System.out.print("Enter transaction number to edit: ");
+        String input = scanner.nextLine();
+        Integer choice = tryToParse(input);
+
+        if (choice == null || choice < 1 || choice > transactions.size()) {
+            System.out.println("Invalid transaction number.");
+            pausePrompt();
+            return;
+        }
+
+        Transaction transaction = transactions.get(choice - 1);
+        boolean changed = false;
+
+        System.out.printf("\nEditing Transaction #%d:%n", choice);
+        System.out.println(transaction);
+
+        String newDate;
+        System.out.printf("Current Date: %s%n", transaction.getDate());
+        while (true) {
+            System.out.print("Enter new date (YYYYMMDD, Enter to keep): ");
+            newDate = scanner.nextLine();
+
+            if (newDate.isEmpty()) {
+                break;
+            }
+
+            if (isValidDate(newDate)) {
+                transaction.setDate(newDate);
+                changed = true;
+                break;
+            } else {
+                System.out.println("Invalid date format. Use YYYYMMDD.");
+            }
+        }
+
+        System.out.printf("%nCurrent Description: %s%n", transaction.getDescription());
+        System.out.print("Enter new description (Enter to keep): ");
+        String newDescription = scanner.nextLine();
+
+        if (!newDescription.isEmpty()) {
+            transaction.setDescription(newDescription);
+            changed = true;
+        }
+
+        double newAmount;
+        System.out.printf("%nCurrent Amount: %.2f%n", transaction.getAmount());
+        while (true) {
+            System.out.print("Enter new amount (positive number, Enter to keep): ");
+            String amountInput = scanner.nextLine();
+
+            if (amountInput.isEmpty()) {
+                break;
+            }
+
+            Double parsedAmount = tryToParseDouble(amountInput);
+            if (parsedAmount != null && parsedAmount > 0) {
+                transaction.setAmount(parsedAmount);
+                changed = true;
+                break;
+            } else {
+                System.out.println("Invalid amount. Please enter a positive number.");
+            }
+        }
+
+        System.out.printf("%nCurrent Category: %s%n", transaction.getCategory());
+        System.out.print("Change category? (Y/N): ");
+        String changeCategory = scanner.nextLine().toLowerCase();
+
+        if ("y".equals(changeCategory)) {
+            String newCategory = promptForCategory(transaction.getType());
+            if (!newCategory.equals(transaction.getCategory())) {
+                transaction.setCategory(newCategory);
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            store.updateUser(user);
+            System.out.println("\nTransaction updated successfully!");
+        } else {
+            System.out.println("\nNo changes were made to the transaction.");
+        }
+
+        pausePrompt();
+    }
+
+    private static void promptForTransactionDelete(List<Transaction> transactions) {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sDelete Transaction%s%n%n", BLUE, RED, BLUE, RESET);
+
+        System.out.print("Enter transaction number to delete: ");
+        String input = scanner.nextLine();
+        Integer choice = tryToParse(input);
+
+        if (choice == null || choice < 1 || choice > transactions.size()) {
+            System.out.println("Invalid transaction number.");
+            pausePrompt();
+            return;
+        }
+
+        Transaction transaction = transactions.get(choice - 1);
+
+        System.out.printf("%nAre you sure you want to delete this transaction?%n");
+        System.out.println(transaction);
+        System.out.print("\nConfirm deletion (Y/N): ");
+
+        String confirm = scanner.nextLine().toLowerCase();
+        if ("y".equals(confirm)) {
+            user.transactions.remove(transaction);
+            store.updateUser(user);
+            System.out.println("\nTransaction deleted successfully!");
+        } else {
+            System.out.println("\nDeletion cancelled.");
+        }
+
+        pausePrompt();
+    }
+
+    private static Object[] promptForFilters(TransactionType currentFilterType, String currentFilterCategory,
+            String currentFilterStartDate, String currentFilterEndDate) {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sFilter Transactions%s%n%n", BLUE, RED, BLUE, RESET);
+
+        System.out.println("Current Filters:");
+        System.out.printf("Type: %s%n", currentFilterType != null ? currentFilterType : "All");
+        System.out.printf("Category: %s%n", currentFilterCategory != null ? currentFilterCategory : "All");
+        System.out.printf("Date Range: %s%n%n",
+                currentFilterStartDate != null ?
+                        currentFilterStartDate + (currentFilterEndDate != null ? " to " + currentFilterEndDate : "") :
+                        "All");
+
+        System.out.println("Set Filters:");
+        System.out.printf("[%s1%s] Set Type Filter%n", GREEN, RESET);
+        System.out.printf("[%s2%s] Set Category Filter%n", GREEN, RESET);
+        System.out.printf("[%s3%s] Set Date Range Filter%n", GREEN, RESET);
+        System.out.printf("[%s4%s] Clear All Filters%n", GREEN, RESET);
+        System.out.printf("[%sB%s] Back to Transactions%n%n", RED, RESET);
+
+        System.out.printf("Please select an %soption%s: ", BLUE, RESET);
+        String choice = scanner.nextLine();
+
+        TransactionType newFilterType = currentFilterType;
+        String newFilterCategory = currentFilterCategory;
+        String newFilterStartDate = currentFilterStartDate;
+        String newFilterEndDate = currentFilterEndDate;
+
+        switch (choice) {
+        case "1":
+            System.out.print("\nFilter by type (I=Income, E=Expense, Enter=Clear/All): ");
+            String typeInput = scanner.nextLine().toUpperCase();
+
+            if (typeInput.isEmpty()) {
+                newFilterType = null;
+            } else if ("I".equals(typeInput)) {
+                newFilterType = TransactionType.INCOME;
+            } else if ("E".equals(typeInput)) {
+                newFilterType = TransactionType.EXPENSE;
+            } else {
+                System.out.println("Invalid type. Please enter I, E, or press Enter.");
+                pausePrompt();
+                return promptForFilters(currentFilterType, currentFilterCategory, currentFilterStartDate, currentFilterEndDate);
+            }
+            break;
+
+        case "2":
+            System.out.print("\nFilter by category (Enter category name, Enter=Clear/All): ");
+            String categoryInput = scanner.nextLine().trim();
+
+            if (categoryInput.isEmpty()) {
+                newFilterCategory = null;
+            } else {
+                newFilterCategory = categoryInput;
+            }
+            break;
+
+        case "3":
+            System.out.print("\nEnter start date (YYYYMMDD, Enter=Clear/All): ");
+            String startDateInput = scanner.nextLine().trim();
+
+            if (startDateInput.isEmpty()) {
+                newFilterStartDate = null;
+                newFilterEndDate = null;
+            } else if (isValidDate(startDateInput)) {
+                newFilterStartDate = startDateInput;
+
+                System.out.print("Enter end date (YYYYMMDD, Enter=No end date): ");
+                String endDateInput = scanner.nextLine().trim();
+
+                if (!endDateInput.isEmpty()) {
+                    if (isValidDate(endDateInput)) {
+                        LocalDate startDate = LocalDate.parse(startDateInput, DATE_FORMATTER);
+                        LocalDate endDate = LocalDate.parse(endDateInput, DATE_FORMATTER);
+
+                        if (endDate.isBefore(startDate)) {
+                            System.out.println("End date cannot be before start date.");
+                            pausePrompt();
+                            return promptForFilters(currentFilterType, currentFilterCategory, currentFilterStartDate, currentFilterEndDate);
+                        }
+
+                        newFilterEndDate = endDateInput;
+                    } else {
+                        System.out.println("Invalid date format. Use YYYYMMDD.");
+                        pausePrompt();
+                        return promptForFilters(currentFilterType, currentFilterCategory, currentFilterStartDate, currentFilterEndDate);
+                    }
+                } else {
+                    newFilterEndDate = null;
+                }
+            } else {
+                System.out.println("Invalid date format. Use YYYYMMDD.");
+                pausePrompt();
+                return promptForFilters(currentFilterType, currentFilterCategory, currentFilterStartDate, currentFilterEndDate);
+            }
+            break;
+
+        case "4":
+            newFilterType = null;
+            newFilterCategory = null;
+            newFilterStartDate = null;
+            newFilterEndDate = null;
+            System.out.println("\nAll filters cleared.");
+            break;
+
+        case "B":
+            break;
+
+        default:
+            System.out.println("Invalid choice. Please try again.");
+            pausePrompt();
+            return promptForFilters(currentFilterType, currentFilterCategory, currentFilterStartDate, currentFilterEndDate);
+        }
+
+        return new Object[] { newFilterType, newFilterCategory, newFilterStartDate, newFilterEndDate };
     }
 
     private static String[] getCategoriesForType(TransactionType type) {
