@@ -32,6 +32,10 @@ class BudgetGoal {
     public void setAmount(double amount) {
         this.amount = amount;
     }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
 }
 
 class Transaction {
@@ -474,6 +478,7 @@ public class Main {
             System.out.println();
             System.out.printf("[%sA%s] Add New Category%n", GREEN, RESET);
             System.out.printf("[%sD%s] Delete Category%n", GREEN, RESET);
+            System.out.printf("[%sE%s] Edit Category Name%n", GREEN, RESET);
             System.out.printf("[%sS%s] Save Categories%n", GREEN, RESET);
             System.out.printf("[%sQ%s] Back to Main Menu%n", RED, RESET);
             System.out.println();
@@ -487,6 +492,9 @@ public class Main {
                 break;
             case "d":
                 deleteCategory();
+                break;
+            case "e":
+                editCategoryName();
                 break;
             case "s":
                 saveCategories();
@@ -619,6 +627,105 @@ public class Main {
                 addCustomCategory(transaction.getType(), category);
             }
         }
+    }
+
+    private static void editCategoryName() {
+        System.out.println("\nEdit Category Name");
+        System.out.print("Enter category type (I for Income, E for Expense): ");
+        String typeChoice = scanner.nextLine().toUpperCase();
+
+        List<String> categories;
+        TransactionType type;
+        if ("I".equals(typeChoice)) {
+            categories = incCats;
+            type = TransactionType.INCOME;
+        } else if ("E".equals(typeChoice)) {
+            categories = expCats;
+            type = TransactionType.EXPENSE;
+        } else {
+            System.out.println("Invalid type. Please enter I or E.");
+            return;
+        }
+
+        if (categories.isEmpty()) {
+            System.out.println("No categories available to edit.");
+            pausePrompt();
+            return;
+        }
+
+        System.out.println("\nSelect category to edit:");
+        for (int i = 0; i < categories.size(); i++) {
+            System.out.printf("%s%d%s. %s\n", GREEN, i + 1, RESET, categories.get(i));
+        }
+
+        System.out.print("\nEnter category number: ");
+        String input = scanner.nextLine();
+        Integer choice = tryToParse(input);
+
+        if (choice == null || choice < 1 || choice > categories.size()) {
+            System.out.println("Invalid choice.");
+            pausePrompt();
+            return;
+        }
+
+        String oldName = categories.get(choice - 1);
+
+        System.out.printf("\nCurrent category name: %s\n", oldName);
+        System.out.print("Enter new category name: ");
+        String newName = scanner.nextLine().trim();
+
+        if (newName.isEmpty()) {
+            System.out.println("Category name cannot be empty.");
+            pausePrompt();
+            return;
+        }
+
+        if (newName.equalsIgnoreCase(oldName)) {
+            System.out.println("New name is the same as the current name. No changes made.");
+            pausePrompt();
+            return;
+        }
+
+        if (categories.stream().anyMatch(c -> c.equalsIgnoreCase(newName))) {
+            System.out.printf("Category '%s' already exists. Please choose a different name.\n", newName);
+            pausePrompt();
+            return;
+        }
+
+        categories.set(choice - 1, newName);
+
+        int transactionCount = 0;
+        int goalCount = 0;
+
+        for (Transaction transaction : user.transactions) {
+            if (transaction.getType() == type && oldName.equals(transaction.getCategory())) {
+                transaction.setCategory(newName);
+                transactionCount++;
+            }
+        }
+
+        for (BudgetGoal goal : user.goals) {
+            if (oldName.equals(goal.getCategory())) {
+                goal.setCategory(newName);
+                goalCount++;
+            }
+        }
+
+        if (categoriesSavedBefore) {
+            store.saveCategories(incCats, expCats);
+        }
+
+        if (transactionCount > 0 || goalCount > 0) {
+            store.updateUser(user);
+        }
+
+        System.out.printf("\nCategory '%s' renamed to '%s'.\n", oldName, newName);
+
+        if (transactionCount > 0 || goalCount > 0) {
+            System.out.printf("Updated %d transaction(s) and %d goal(s).\n", transactionCount, goalCount);
+        }
+
+        pausePrompt();
     }
 
     private static void manageGoals() {
