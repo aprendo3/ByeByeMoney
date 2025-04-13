@@ -376,51 +376,91 @@ public class Main {
     }
 
     private static void showTransactions() {
-        cleanScreen();
-        System.out.printf("%sBye Bye Money%s > %sView/Manage Transactions%s\n\n", BLUE, RED, BLUE, RESET);
+        int pageSize = 5;
+        int currentPage = 1;
+        int totalItems = user.transactions.size();
+        int totalPages = (totalItems + pageSize - 1) / pageSize;
 
-        if (user.transactions.isEmpty()) {
-            System.out.println("No transactions found.");
-            pausePrompt();
-            return;
+        if (totalPages == 0) {
+            totalPages = 1;
         }
 
-        System.out.println("#  | Date     | Description     |   Amount | Category   | Type");
-        System.out.println("---+---------+-----------------+----------+------------+---------");
+        boolean viewing = true;
 
-        for (int i = 0; i < user.transactions.size(); i++) {
-            System.out.printf("%s%2d%s | %s%n", GREEN, i + 1, RESET, user.transactions.get(i));
-        }
+        while (viewing) {
+            cleanScreen();
+            System.out.printf("%sBye Bye Money%s > %sView/Manage Transactions%s (Page %s%d%s/%s%d%s)%n%n",
+                    BLUE, RED, BLUE, RESET, GREEN, currentPage, RESET, GREEN, totalPages, RESET);
 
-        System.out.println("-----------------------------------------------------------------");
+            if (user.transactions.isEmpty()) {
+                System.out.println("No transactions found.");
+                pausePrompt();
+                return;
+            }
 
-        System.out.printf("[%sE%s] Edit Transaction%n", GREEN, RESET);
-        System.out.printf("[%sD%s] Delete Transaction%n", GREEN, RESET);
-        System.out.printf("[%sX%s] Export Transactions%n", GREEN, RESET);
-        System.out.printf("[%sI%s] Import Transactions%n", GREEN, RESET);
-        System.out.printf("[%sB%s] Back to Main Menu%n", RED, RESET);
-        System.out.printf("Please select an %soption%s: ", BLUE, RESET);
+            int startIndex = (currentPage - 1) * pageSize;
+            int endIndex = Math.min(startIndex + pageSize, totalItems);
 
-        String choice = scanner.nextLine().toLowerCase();
+            System.out.println("#  | Date     | Description     |   Amount | Category   | Type");
+            System.out.println("---+---------+-----------------+----------+------------+---------");
 
-        switch (choice) {
-        case "e":
-            editTransaction();
-            break;
-        case "d":
-            deleteTransaction();
-            break;
-        case "x":
-            exportTransactionsToCsv();
-            break;
-        case "i":
-            importTransactionsFromCsv();
-            break;
-        case "b":
-            return;
-        default:
-            System.out.println("Invalid choice. Returning to main menu.");
-            break;
+            for (int i = startIndex; i < endIndex; i++) {
+                System.out.printf("%s%2d%s | %s%n", GREEN, i + 1, RESET, user.transactions.get(i));
+            }
+
+            System.out.println("-----------------------------------------------------------------");
+            System.out.printf("Showing transactions %s%d%s-%s%d%s of %s%d%s total\n\n",
+                    GREEN, startIndex + 1, RESET, GREEN, endIndex, RESET, GREEN, totalItems, RESET);
+
+            System.out.printf("[%sE%s] Edit Transaction%n", GREEN, RESET);
+            System.out.printf("[%sD%s] Delete Transaction%n", GREEN, RESET);
+            System.out.printf("[%sX%s] Export Transactions%n", GREEN, RESET);
+            System.out.printf("[%sI%s] Import Transactions%n", GREEN, RESET);
+
+            if (currentPage < totalPages) {
+                System.out.printf("[%sN%s] Next Page%n", GREEN, RESET);
+            }
+
+            if (currentPage > 1) {
+                System.out.printf("[%sP%s] Previous Page%n", GREEN, RESET);
+            }
+
+            System.out.printf("[%sB%s] Back to Main Menu%n", RED, RESET);
+            System.out.printf("%nPlease select an %soption%s: ", BLUE, RESET);
+
+            String choice = scanner.nextLine().toLowerCase();
+
+            switch (choice) {
+            case "e":
+                editTransaction();
+                break;
+            case "d":
+                deleteTransaction();
+                break;
+            case "x":
+                exportTransactionsToCsv();
+                break;
+            case "i":
+                importTransactionsFromCsv();
+                break;
+            case "n":
+                if (currentPage < totalPages) {
+                    currentPage++;
+                }
+                break;
+            case "p":
+                if (currentPage > 1) {
+                    currentPage--;
+                }
+                break;
+            case "b":
+                viewing = false;
+                break;
+            default:
+                System.out.println("Invalid choice. Please try again.");
+                pausePrompt();
+                break;
+            }
         }
     }
 
@@ -1088,7 +1128,8 @@ public class Main {
     }
 
     private static void editTransaction() {
-        System.out.printf("%sBye Bye Money%s > %sEdit Transaction%s%n", BLUE, RED, BLUE, RESET);
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sEdit Transaction%s%n%n", BLUE, RED, BLUE, RESET);
 
         System.out.print("Enter transaction number to edit: ");
         String input = scanner.nextLine();
@@ -1177,7 +1218,8 @@ public class Main {
     }
 
     private static void deleteTransaction() {
-        System.out.printf("%sBye Bye Money%s > %sDelete Transaction%s%n", BLUE, RED, BLUE, RESET);
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sDelete Transaction%s%n%n", BLUE, RED, BLUE, RESET);
 
         System.out.print("Enter transaction number to delete: ");
         String input = scanner.nextLine();
