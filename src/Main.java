@@ -3,7 +3,9 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
 enum TransactionType {
@@ -111,6 +113,7 @@ public class Main {
             System.out.printf("[%sA%s] Add Transaction\n", GREEN, RESET);
             System.out.printf("[%sV%s] View Transactions\n", GREEN, RESET);
             System.out.printf("[%sC%s] Manage Categories\n", GREEN, RESET);
+            System.out.printf("[%sS%s] Summary Report\n", GREEN, RESET);
             System.out.printf("[%sQ%s] Quit\n", RED, RESET);
             System.out.println();
             System.out.printf("Please select an %soption%s: ", BLUE, RESET);
@@ -127,6 +130,10 @@ public class Main {
                 break;
             case "c":
                 manageCategories();
+                cleanScreen();
+                break;
+            case "s":
+                showSummaryReport();
                 cleanScreen();
                 break;
             case "q":
@@ -544,5 +551,118 @@ public class Main {
                 addCustomCategory(transaction.getType(), category);
             }
         }
+    }
+
+    private static void showSummaryReport() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sSummary Report%s\n\n", BLUE, RED, BLUE, RESET);
+
+        if (user == null || user.transactions.isEmpty()) {
+            System.out.println("No transactions found.");
+            pausePrompt();
+            return;
+        }
+
+        LocalDate today = LocalDate.now();
+        LocalDate firstDayOfMonth = today.withDayOfMonth(1);
+
+        String defaultStartDate = firstDayOfMonth.format(DATE_FORMATTER);
+        String defaultEndDate = today.format(DATE_FORMATTER);
+
+        String startDate;
+        while (true) {
+            System.out.printf("Enter start date (YYYYMMDD, Enter for %s): ", defaultStartDate);
+            startDate = scanner.nextLine();
+            if (startDate.isEmpty()) {
+                startDate = defaultStartDate;
+                break;
+            }
+            if (isValidDate(startDate)) {
+                break;
+            } else {
+                System.out.println("Invalid date format. Use YYYYMMDD.");
+            }
+        }
+
+        String endDate;
+        while (true) {
+            System.out.printf("Enter end date (YYYYMMDD, Enter for %s): ", defaultEndDate);
+            endDate = scanner.nextLine();
+            if (endDate.isEmpty()) {
+                endDate = defaultEndDate;
+                break;
+            }
+            if (isValidDate(endDate)) {
+                break;
+            } else {
+                System.out.println("Invalid date format. Use YYYYMMDD.");
+            }
+        }
+
+        LocalDate startLocalDate = LocalDate.parse(startDate, DATE_FORMATTER);
+        LocalDate endLocalDate = LocalDate.parse(endDate, DATE_FORMATTER);
+
+        if (startLocalDate.isAfter(endLocalDate)) {
+            System.out.println("Start date cannot be after end date.");
+            pausePrompt();
+            return;
+        }
+
+        List<Transaction> filteredTransactions = new ArrayList<>();
+        for (Transaction transaction : user.transactions) {
+            LocalDate transactionDate = LocalDate.parse(transaction.getDate(), DATE_FORMATTER);
+            if (!transactionDate.isBefore(startLocalDate) && !transactionDate.isAfter(endLocalDate)) {
+                filteredTransactions.add(transaction);
+            }
+        }
+
+        if (filteredTransactions.isEmpty()) {
+            System.out.printf("No transactions found between %s and %s.\n", startDate, endDate);
+            pausePrompt();
+            return;
+        }
+
+        double totalIncome = 0;
+        double totalExpenses = 0;
+        Map<String, Double> expensesByCategory = new HashMap<>();
+
+        for (Transaction transaction : filteredTransactions) {
+            if (transaction.getType() == TransactionType.INCOME) {
+                totalIncome += transaction.getAmount();
+            } else {
+                totalExpenses += transaction.getAmount();
+
+                String category = transaction.getCategory();
+                expensesByCategory.put(category, expensesByCategory.getOrDefault(category, 0.0) + transaction.getAmount());
+            }
+        }
+
+        double netBalance = totalIncome - totalExpenses;
+
+        System.out.println("==================================================");
+        System.out.printf("Report Period: %s to %s\n\n", startDate, endDate);
+
+        System.out.printf("%sTotal Income:   $%10.2f%s\n", GREEN, totalIncome, RESET);
+        System.out.printf("%sTotal Expenses: $%10.2f%s\n", RED, totalExpenses, RESET);
+        System.out.println("--------------------------------------------------");
+
+        String balanceColor = netBalance >= 0 ? GREEN : RED;
+        System.out.printf("%sNet Balance:    $%10.2f%s\n\n", balanceColor, netBalance, RESET);
+
+        if (!expensesByCategory.isEmpty()) {
+            System.out.println("Expenses by Category:");
+            System.out.println("--------------------------------------------------");
+
+            List<Map.Entry<String, Double>> sortedExpenses = new ArrayList<>(expensesByCategory.entrySet());
+            sortedExpenses.sort((e1, e2) -> Double.compare(e2.getValue(), e1.getValue()));
+
+            for (Map.Entry<String, Double> entry : sortedExpenses) {
+                double percentage = (entry.getValue() / totalExpenses) * 100;
+                System.out.printf("%-15s: $%10.2f (%5.1f%%)\n", entry.getKey(), entry.getValue(), percentage);
+            }
+        }
+
+        System.out.println("==================================================");
+        pausePrompt();
     }
 }
