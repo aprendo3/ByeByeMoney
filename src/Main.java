@@ -69,6 +69,22 @@ class Transaction {
         return category;
     }
 
+    public void setDate(String date) {
+        this.date = date;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void setAmount(double amount) {
+        this.amount = amount;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
     @Override
     public String toString() {
         return String.format("%s | %-15s | %8.2f | %-10s | %s",
@@ -353,17 +369,41 @@ public class Main {
         cleanScreen();
         System.out.printf("%sBye Bye Money%s > %sView Transactions%s\n\n", BLUE, RED, BLUE, RESET);
 
-        System.out.println("Date     | Description     |   Amount | Category   | Type");
-        System.out.println("---------+-----------------+----------+------------+---------");
-
-        for (int i = 0; i < user.transactions.size(); i++) {
-            System.out.println(user.transactions.get(i));
+        if (user.transactions.isEmpty()) {
+            System.out.println("No transactions found.");
+            pausePrompt();
+            return;
         }
 
-        System.out.println("\n-----------------------------------------------------------------");
+        System.out.println("#  | Date     | Description     |   Amount | Category   | Type");
+        System.out.println("---+---------+-----------------+----------+------------+---------");
 
+        for (int i = 0; i < user.transactions.size(); i++) {
+            System.out.printf("%2d | %s%n", i + 1, user.transactions.get(i));
+        }
 
-        pausePrompt();
+        System.out.println("-----------------------------------------------------------------");
+
+        System.out.printf("[%sE%s] Edit Transaction\n", GREEN, RESET);
+        System.out.printf("[%sD%s] Delete Transaction\n", GREEN, RESET);
+        System.out.printf("[%sB%s] Back to Main Menu\n", RED, RESET);
+        System.out.printf("Please select an %soption%s: ", BLUE, RESET);
+
+        String choice = scanner.nextLine().toLowerCase();
+
+        switch (choice) {
+        case "e":
+            editTransaction();
+            break;
+        case "d":
+            deleteTransaction();
+            break;
+        case "b":
+            return;
+        default:
+            System.out.println("Invalid choice. Returning to main menu.");
+            break;
+        }
     }
 
     private static String[] getCategoriesForType(TransactionType type) {
@@ -721,6 +761,126 @@ public class Main {
             System.out.printf("Budget goal for '%s' deleted successfully!\n", removed.getCategory());
         } else {
             System.out.println("Invalid choice.");
+        }
+
+        pausePrompt();
+    }
+
+    private static void editTransaction() {
+        System.out.printf("%sBye Bye Money%s > %sEdit Transaction%s%n", BLUE, RED, BLUE, RESET);
+
+        System.out.print("Enter transaction number to edit: ");
+        String input = scanner.nextLine();
+        Integer choice = tryToParse(input);
+
+        if (choice == null || choice < 1 || choice > user.transactions.size()) {
+            System.out.println("Invalid transaction number.");
+            pausePrompt();
+            return;
+        }
+
+        Transaction transaction = user.transactions.get(choice - 1);
+        boolean changed = false;
+
+        System.out.printf("\nEditing Transaction #%d:%n", choice);
+        System.out.println(transaction);
+
+        String newDate;
+        System.out.printf("Current Date: %s%n", transaction.getDate());
+        while (true) {
+            System.out.print("Enter new date (YYYYMMDD, Enter to keep): ");
+            newDate = scanner.nextLine();
+
+            if (newDate.isEmpty()) {
+                break;
+            }
+
+            if (isValidDate(newDate)) {
+                transaction.setDate(newDate);
+                changed = true;
+                break;
+            } else {
+                System.out.println("Invalid date format. Use YYYYMMDD.");
+            }
+        }
+
+        System.out.printf("%nCurrent Description: %s%n", transaction.getDescription());
+        System.out.print("Enter new description (Enter to keep): ");
+        String newDescription = scanner.nextLine();
+
+        if (!newDescription.isEmpty()) {
+            transaction.setDescription(newDescription);
+            changed = true;
+        }
+
+        double newAmount;
+        System.out.printf("%nCurrent Amount: %.2f%n", transaction.getAmount());
+        while (true) {
+            System.out.print("Enter new amount (positive number, Enter to keep): ");
+            String amountInput = scanner.nextLine();
+
+            if (amountInput.isEmpty()) {
+                break;
+            }
+
+            Double parsedAmount = tryToParseDouble(amountInput);
+            if (parsedAmount != null && parsedAmount > 0) {
+                transaction.setAmount(parsedAmount);
+                changed = true;
+                break;
+            } else {
+                System.out.println("Invalid amount. Please enter a positive number.");
+            }
+        }
+
+        System.out.printf("%nCurrent Category: %s%n", transaction.getCategory());
+        System.out.print("Change category? (Y/N): ");
+        String changeCategory = scanner.nextLine().toLowerCase();
+
+        if ("y".equals(changeCategory)) {
+            String newCategory = promptForCategory(transaction.getType());
+            if (!newCategory.equals(transaction.getCategory())) {
+                transaction.setCategory(newCategory);
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            store.updateUser(user);
+            System.out.println("\nTransaction updated successfully!");
+        } else {
+            System.out.println("\nNo changes were made to the transaction.");
+        }
+
+        pausePrompt();
+    }
+
+    private static void deleteTransaction() {
+        System.out.printf("%sBye Bye Money%s > %sDelete Transaction%s%n", BLUE, RED, BLUE, RESET);
+
+        System.out.print("Enter transaction number to delete: ");
+        String input = scanner.nextLine();
+        Integer choice = tryToParse(input);
+
+        if (choice == null || choice < 1 || choice > user.transactions.size()) {
+            System.out.println("Invalid transaction number.");
+            pausePrompt();
+            return;
+        }
+
+        Transaction transaction = user.transactions.get(choice - 1);
+
+        System.out.printf("%nAre you sure you want to delete this transaction?%n");
+        System.out.println(transaction);
+        System.out.print("Confirm deletion (Y/N): ");
+
+        String confirm = scanner.nextLine().toLowerCase();
+        if ("y".equals(confirm)) {
+            user.transactions.remove(choice - 1);
+            store.updateUser(user);
+            System.out.println("Transaction deleted successfully!");
+        } else {
+            System.out.println("Deletion cancelled.");
         }
 
         pausePrompt();
