@@ -8,6 +8,8 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -384,10 +386,15 @@ public class Main {
         String filterStartDate = null;
         String filterEndDate = null;
 
+        String sortField = "date";
+        boolean sortAscending = false;
+
         boolean viewing = true;
 
         while (viewing) {
             List<Transaction> filtered = applyTransactionFilters(user.transactions, filterType, filterCategory, filterStartDate, filterEndDate);
+
+            sortTransactions(filtered, sortField, sortAscending);
 
             int totalItems = filtered.size();
             int totalPages = (totalItems + pageSize - 1) / pageSize;
@@ -398,24 +405,30 @@ public class Main {
 
             cleanScreen();
 
-            StringBuilder filterInfo = new StringBuilder();
+            StringBuilder headerInfo = new StringBuilder();
+
             if (filterType != null || filterCategory != null || filterStartDate != null) {
-                filterInfo.append(" (Filtered by");
+                headerInfo.append(" (Filtered by");
                 if (filterType != null) {
-                    filterInfo.append(String.format(" Type: %s", filterType));
+                    headerInfo.append(String.format(" Type: %s", filterType));
                 }
                 if (filterCategory != null) {
-                    filterInfo.append(String.format("%s Category: %s", filterType != null ? "," : "", filterCategory));
+                    headerInfo.append(String.format("%s Category: %s", filterType != null ? "," : "", filterCategory));
                 }
                 if (filterStartDate != null) {
-                    filterInfo.append(String.format("%s Date: %s", (filterType != null || filterCategory != null) ? "," : "",
+                    headerInfo.append(String.format("%s Date: %s", (filterType != null || filterCategory != null) ? "," : "",
                             filterStartDate + (filterEndDate != null ? "-" + filterEndDate : "")));
                 }
-                filterInfo.append(")");
+                headerInfo.append(")");
             }
 
+            String sortInfo = String.format(" (Sorted by %s %s)",
+                    sortField.substring(0, 1).toUpperCase() + sortField.substring(1),
+                    sortAscending ? "Ascending" : "Descending");
+            headerInfo.append(sortInfo);
+
             System.out.printf("%sBye Bye Money%s > %sView/Manage Transactions%s%s (Page %s%d%s/%s%d%s)%n%n",
-                    BLUE, RED, BLUE, RESET, filterInfo.toString(), GREEN, currentPage, RESET, GREEN, totalPages, RESET);
+                    BLUE, RED, BLUE, RESET, headerInfo.toString(), GREEN, currentPage, RESET, GREEN, totalPages, RESET);
 
             if (user.transactions.isEmpty()) {
                 System.out.println("No transactions found.");
@@ -448,6 +461,7 @@ public class Main {
             System.out.printf("[%sX%s] Export Transactions%n", GREEN, RESET);
             System.out.printf("[%sI%s] Import Transactions%n", GREEN, RESET);
             System.out.printf("[%sF%s] Filter Transactions%n", GREEN, RESET);
+            System.out.printf("[%sO%s] Order By%n", GREEN, RESET);
 
             if (currentPage < totalPages) {
                 System.out.printf("[%sN%s] Next Page%n", GREEN, RESET);
@@ -486,12 +500,20 @@ public class Main {
                 importTransactionsFromCsv();
                 break;
             case "f":
-                Object[] result = promptForFilters(filterType, filterCategory, filterStartDate, filterEndDate);
-                if (result != null) {
-                    filterType = result[0] != null ? (TransactionType) result[0] : null;
-                    filterCategory = (String) result[1];
-                    filterStartDate = (String) result[2];
-                    filterEndDate = (String) result[3];
+                Object[] filterResult = promptForFilters(filterType, filterCategory, filterStartDate, filterEndDate);
+                if (filterResult != null) {
+                    filterType = filterResult[0] != null ? (TransactionType) filterResult[0] : null;
+                    filterCategory = (String) filterResult[1];
+                    filterStartDate = (String) filterResult[2];
+                    filterEndDate = (String) filterResult[3];
+                    currentPage = 1;
+                }
+                break;
+            case "o":
+                Object[] sortResult = promptForSortOrder(sortField, sortAscending);
+                if (sortResult != null) {
+                    sortField = (String) sortResult[0];
+                    sortAscending = (Boolean) sortResult[1];
                     currentPage = 1;
                 }
                 break;
@@ -785,6 +807,104 @@ public class Main {
         }
 
         return new Object[] { newFilterType, newFilterCategory, newFilterStartDate, newFilterEndDate };
+    }
+
+    private static void sortTransactions(List<Transaction> transactions, String sortField, boolean sortAscending) {
+        if (transactions.isEmpty()) {
+            return;
+        }
+
+        Comparator<Transaction> comparator = null;
+
+        switch (sortField.toLowerCase()) {
+            case "date":
+                comparator = Comparator.comparing(Transaction::getDate);
+                break;
+            case "description":
+                comparator = Comparator.comparing(t -> t.getDescription().toLowerCase());
+                break;
+            case "amount":
+                comparator = Comparator.comparing(Transaction::getAmount);
+                break;
+            case "category":
+                comparator = Comparator.comparing(t -> t.getCategory().toLowerCase());
+                break;
+            default:
+                comparator = Comparator.comparing(Transaction::getDate);
+                break;
+        }
+
+        if (!sortAscending) {
+            comparator = comparator.reversed();
+        }
+
+        Collections.sort(transactions, comparator);
+    }
+
+    private static Object[] promptForSortOrder(String currentSortField, boolean currentSortAscending) {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sOrder Transactions%s%n%n", BLUE, RED, BLUE, RESET);
+
+        System.out.println("Current Sort Order:");
+        System.out.printf("Field: %s%n", currentSortField.substring(0, 1).toUpperCase() + currentSortField.substring(1));
+        System.out.printf("Direction: %s%n%n", currentSortAscending ? "Ascending" : "Descending");
+
+        System.out.println("Sort By Field:");
+        System.out.printf("[%s1%s] Date%n", GREEN, RESET);
+        System.out.printf("[%s2%s] Description%n", GREEN, RESET);
+        System.out.printf("[%s3%s] Amount%n", GREEN, RESET);
+        System.out.printf("[%s4%s] Category%n", GREEN, RESET);
+        System.out.printf("[%sB%s] Back to Transactions%n%n", RED, RESET);
+
+        System.out.printf("Please select an %soption%s: ", BLUE, RESET);
+        String fieldChoice = scanner.nextLine();
+
+        String newSortField = currentSortField;
+        boolean newSortAscending = currentSortAscending;
+
+        switch (fieldChoice) {
+            case "1":
+                newSortField = "date";
+                break;
+            case "2":
+                newSortField = "description";
+                break;
+            case "3":
+                newSortField = "amount";
+                break;
+            case "4":
+                newSortField = "category";
+                break;
+            case "B":
+                return null;
+            default:
+                System.out.println("Invalid choice. Please try again.");
+                pausePrompt();
+                return promptForSortOrder(currentSortField, currentSortAscending);
+        }
+
+        System.out.printf("\nSort Direction for %s:%n",
+                newSortField.substring(0, 1).toUpperCase() + newSortField.substring(1));
+        System.out.printf("[%s1%s] Ascending%n", GREEN, RESET);
+        System.out.printf("[%s2%s] Descending%n%n", GREEN, RESET);
+
+        System.out.printf("Please select an %soption%s: ", BLUE, RESET);
+        String directionChoice = scanner.nextLine();
+
+        switch (directionChoice) {
+            case "1":
+                newSortAscending = true;
+                break;
+            case "2":
+                newSortAscending = false;
+                break;
+            default:
+                System.out.println("Invalid choice. Please try again.");
+                pausePrompt();
+                return promptForSortOrder(currentSortField, currentSortAscending);
+        }
+
+        return new Object[] { newSortField, newSortAscending };
     }
 
     private static String[] getCategoriesForType(TransactionType type) {
