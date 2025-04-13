@@ -1,3 +1,8 @@
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -184,6 +189,7 @@ public class Main {
                 showSummaryReport();
                 cleanScreen();
                 break;
+
             case "q":
                 running = false;
                 break;
@@ -390,6 +396,8 @@ public class Main {
 
         System.out.printf("[%sE%s] Edit Transaction%n", GREEN, RESET);
         System.out.printf("[%sD%s] Delete Transaction%n", GREEN, RESET);
+        System.out.printf("[%sX%s] Export Transactions%n", GREEN, RESET);
+        System.out.printf("[%sI%s] Import Transactions%n", GREEN, RESET);
         System.out.printf("[%sB%s] Back to Main Menu%n", RED, RESET);
         System.out.printf("Please select an %soption%s: ", BLUE, RESET);
 
@@ -401,6 +409,12 @@ public class Main {
             break;
         case "d":
             deleteTransaction();
+            break;
+        case "x":
+            exportTransactionsToCsv();
+            break;
+        case "i":
+            importTransactionsFromCsv();
             break;
         case "b":
             return;
@@ -626,6 +640,206 @@ public class Main {
             if (category != null && !category.isEmpty()) {
                 addCustomCategory(transaction.getType(), category);
             }
+        }
+    }
+
+    private static void exportTransactionsToCsv() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sExport Transactions%s%n%n", BLUE, RED, BLUE, RESET);
+
+        if (user == null || user.transactions.isEmpty()) {
+            System.out.println("No transactions to export.");
+            pausePrompt();
+            return;
+        }
+
+        String defaultFilename = String.format("%s_transactions_%s.csv", user.getUsername(), LocalDate.now().format(DATE_FORMATTER));
+        System.out.printf("Enter filename for export (Enter for %s): ", defaultFilename);
+        String filename = scanner.nextLine().trim();
+
+        if (filename.isEmpty()) {
+            filename = defaultFilename;
+        }
+
+        if (!filename.toLowerCase().endsWith(".csv")) {
+            filename = String.format("%s.csv", filename);
+        }
+
+        try (FileWriter writer = new FileWriter(filename)) {
+            writer.write("Date,Description,Amount,Type,Category\n");
+
+            int count = 0;
+            for (Transaction transaction : user.transactions) {
+                String date = transaction.getDate();
+                String description = formatCsvField(transaction.getDescription());
+                String amount = String.valueOf(transaction.getAmount());
+                String type = transaction.getType().toString();
+                String category = formatCsvField(transaction.getCategory());
+
+                writer.write(String.format("%s,%s,%s,%s,%s\n", date, description, amount, type, category));
+                count++;
+            }
+
+            System.out.printf("\nSuccessfully exported %d transactions to %s%n", count, filename);
+        } catch (IOException e) {
+            System.out.printf("%nError exporting transactions: %s%n", e.getMessage());
+        }
+
+        pausePrompt();
+    }
+
+    private static void importTransactionsFromCsv() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sImport Transactions%s%n%n", BLUE, RED, BLUE, RESET);
+
+        System.out.print("Enter CSV filename to import: ");
+        String filename = scanner.nextLine().trim();
+
+        if (filename.isEmpty()) {
+            System.out.println("\nFilename cannot be empty.");
+            pausePrompt();
+            return;
+        }
+
+        File file = new File(filename);
+        if (!file.exists() || !file.isFile()) {
+            System.out.printf("%nFile '%s' does not exist.%n", filename);
+            pausePrompt();
+            return;
+        }
+
+        System.out.println("\nHow would you like to import the transactions?");
+        System.out.printf("[%sA%s] Add to existing transactions%n", GREEN, RESET);
+        System.out.printf("[%sR%s] Replace all existing transactions%n", GREEN, RESET);
+        System.out.printf("[%sC%s] Cancel import%n", RED, RESET);
+        System.out.printf("\nPlease select an %soption%s: ", BLUE, RESET);
+
+        String mode = scanner.nextLine().toLowerCase();
+
+        if ("c".equals(mode) || (!"a".equals(mode) && !"r".equals(mode))) {
+            System.out.println("\nImport cancelled. Existing data remains unchanged.");
+            pausePrompt();
+            return;
+        }
+
+        boolean replace = "r".equals(mode);
+
+        List<Transaction> imports = new ArrayList<>();
+        boolean catsChanged = false;
+        int skipped = 0;
+        int lineNum = 0;
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            String line;
+
+            line = reader.readLine();
+            lineNum++;
+
+            if (line == null) {
+                System.out.println("\nFile is empty.");
+                pausePrompt();
+                return;
+            }
+
+            while ((line = reader.readLine()) != null) {
+                lineNum++;
+
+                if (line.trim().isEmpty()) {
+                    continue;
+                }
+
+                String[] parts = line.split(",");
+
+                if (parts.length < 5) {
+                    System.out.printf("Skipped line %d: Not enough fields.%n", lineNum);
+                    skipped++;
+                    continue;
+                }
+
+                String date = parts[0].trim();
+                String desc = parts[1].trim();
+                String amountStr = parts[2].trim();
+                String typeStr = parts[3].trim();
+                String category = parts[4].trim();
+
+                if (!isValidDate(date)) {
+                    System.out.printf("Skipped line %d: Invalid date format.%n", lineNum);
+                    skipped++;
+                    continue;
+                }
+
+                Double amount = tryToParseDouble(amountStr);
+                if (amount == null || amount <= 0) {
+                    System.out.printf("Skipped line %d: Invalid amount.%n", lineNum);
+                    skipped++;
+                    continue;
+                }
+
+                TransactionType type;
+                try {
+                    type = TransactionType.valueOf(typeStr);
+                } catch (IllegalArgumentException e) {
+                    System.out.printf("Skipped line %d: Invalid transaction type.%n", lineNum);
+                    skipped++;
+                    continue;
+                }
+
+                if (category.isEmpty()) {
+                    System.out.printf("Skipped line %d: Empty category.%n", lineNum);
+                    skipped++;
+                    continue;
+                }
+
+                List<String> cats = (type == TransactionType.INCOME) ? incCats : expCats;
+                if (!cats.contains(category)) {
+                    addCustomCategory(type, category);
+                    catsChanged = true;
+                }
+
+                Transaction transaction = new Transaction(date, desc, amount,  type, category);
+                imports.add(transaction);
+            }
+
+            if (imports.isEmpty()) {
+                System.out.println("\nImport finished. No valid transactions found in the file. Existing data remains unchanged.");
+                pausePrompt();
+                return;
+            }
+
+            if (replace) {
+                user.transactions.clear();
+                user.transactions.addAll(imports);
+                System.out.printf("\nImport successful. Replaced existing data with %d imported transactions. Skipped %d lines due to errors.\n",
+                        imports.size(), skipped);
+            } else {
+                user.transactions.addAll(imports);
+                System.out.printf("\nImport successful. Added %d transactions to existing data. Skipped %d lines due to errors.\n",
+                        imports.size(), skipped);
+            }
+            store.updateUser(user);
+
+            if (catsChanged && categoriesSavedBefore) {
+                store.saveCategories(incCats, expCats);
+            }
+
+        } catch (IOException e) {
+            System.out.printf("\nError reading file: %s\n", e.getMessage());
+        }
+
+        pausePrompt();
+    }
+
+    private static String formatCsvField(String field) {
+        if (field == null) {
+            return "";
+        }
+
+        boolean needsQuoting = field.contains(",") || field.contains("\"") || field.contains("\n");
+
+        if (needsQuoting) {
+            return String.format("\"%s\"", field.replace("\"", "\"\""));
+        } else {
+            return field;
         }
     }
 

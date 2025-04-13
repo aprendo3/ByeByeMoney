@@ -14,3 +14,5 @@ nbdist/
 *.war
 
 data/
+
+**/*.csv
