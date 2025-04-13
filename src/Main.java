@@ -4,6 +4,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -220,6 +221,7 @@ public class Main {
             System.out.printf("[%sV%s] View/Manage Transactions%n", GREEN, RESET);
             System.out.printf("[%sS%s] Summary Report%n", GREEN, RESET);
             System.out.printf("[%sT%s] Quick Totals%n", GREEN, RESET);
+            System.out.printf("[%sN%s] Analyze Data%n", GREEN, RESET);
             System.out.printf("[%sC%s] Manage Categories%n", GREEN, RESET);
             System.out.printf("[%sG%s] Manage Goals%n", GREEN, RESET);
             System.out.printf("[%sR%s] Manage Recurring%n", GREEN, RESET);
@@ -252,6 +254,10 @@ public class Main {
                 break;
             case "t":
                 showQuickTotals();
+                cleanScreen();
+                break;
+            case "n":
+                showAnalysisMenu();
                 cleanScreen();
                 break;
             case "r":
@@ -1278,6 +1284,169 @@ public class Main {
         System.out.printf("Total Income:  %s$%10.2f%s%n", GREEN, totalIncome, RESET);
         System.out.printf("Total Expenses: %s$%10.2f%s%n", RED, totalExpenses, RESET);
         System.out.printf("Net Balance:    %s$%10.2f%s%n", netColor, netBalance, RESET);
+
+        pausePrompt();
+    }
+
+    private static void showAnalysisMenu() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sAnalyze Data%s%n%n", BLUE, RED, BLUE, RESET);
+
+        System.out.printf("[%sC%s] Category Trend%n", GREEN, RESET);
+        System.out.printf("[%sQ%s] Back to Main Menu%n", RED, RESET);
+        System.out.println();
+        System.out.printf("Please select an %soption%s: ", BLUE, RESET);
+
+        String choice = scanner.nextLine().toLowerCase();
+
+        switch (choice) {
+        case "c":
+            showCategoryTrendReport();
+            break;
+        case "q":
+            return;
+        default:
+            System.out.println("Invalid choice. Please try again.");
+            pausePrompt();
+            showAnalysisMenu();
+            break;
+        }
+    }
+
+    private static void showCategoryTrendReport() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sAnalyze Data%s > %sCategory Trend%s%n%n",
+                BLUE, RED, BLUE, RESET, BLUE, RESET);
+
+        if (expCats.isEmpty()) {
+            System.out.println("No expense categories available for analysis.");
+            pausePrompt();
+            return;
+        }
+
+        System.out.println("Select an expense category:");
+        for (int i = 0; i < expCats.size(); i++) {
+            System.out.printf("%s%d%s. %s%n", GREEN, i + 1, RESET, expCats.get(i));
+        }
+
+        System.out.print("\nEnter category number: ");
+        String input = scanner.nextLine();
+        Integer choice = tryToParse(input);
+
+        if (choice == null || choice < 1 || choice > expCats.size()) {
+            System.out.println("Invalid category number.");
+            pausePrompt();
+            return;
+        }
+
+        String category = expCats.get(choice - 1);
+
+        System.out.println("\nSelect period:");
+        System.out.printf("[%s6%s] Last 6 Months%n", GREEN, RESET);
+        System.out.printf("[%s12%s] Last 12 Months%n", GREEN, RESET);
+        System.out.print("\nEnter choice: ");
+
+        input = scanner.nextLine();
+        Integer months = tryToParse(input);
+
+        if (months == null || (months != 6 && months != 12)) {
+            System.out.println("Invalid choice. Please enter 6 or 12.");
+            pausePrompt();
+            return;
+        }
+
+        generateCategoryTrendReport(category, months);
+    }
+
+    private static void generateCategoryTrendReport(String category, int months) {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sAnalyze Data%s > %sCategory Trend%s%n%n",
+                BLUE, RED, BLUE, RESET, BLUE, RESET);
+
+        LocalDate today = LocalDate.now();
+        LocalDate currentMonthStart = today.withDayOfMonth(1);
+        LocalDate startDate = currentMonthStart.minusMonths(months);
+        LocalDate endDate = today;
+
+        String startDateStr = startDate.format(DATE_FORMATTER);
+        String endDateStr = endDate.format(DATE_FORMATTER);
+
+        System.out.printf("Spending Trend for Category: %s%s%s%n", GREEN, category, RESET);
+        System.out.printf("Period: %s to %s (%d months)%n%n", startDateStr, endDateStr, months);
+
+        if (user.transactions.isEmpty()) {
+            System.out.println("No transactions found in the system.");
+            pausePrompt();
+            return;
+        }
+
+        List<Transaction> expenseTransactions = new ArrayList<>();
+        for (Transaction transaction : user.transactions) {
+            if (transaction.getType() == TransactionType.EXPENSE) {
+                expenseTransactions.add(transaction);
+            }
+        }
+
+        if (expenseTransactions.isEmpty()) {
+            System.out.println("No expense transactions found in the system.");
+            pausePrompt();
+            return;
+        }
+
+        List<Transaction> filtered = new ArrayList<>();
+        for (Transaction transaction : expenseTransactions) {
+            if (transaction.getCategory().equalsIgnoreCase(category)) {
+                try {
+                    LocalDate transactionDate = LocalDate.parse(transaction.getDate(), DATE_FORMATTER);
+                    if (!transactionDate.isBefore(startDate) && !transactionDate.isAfter(endDate)) {
+                        filtered.add(transaction);
+                    }
+                } catch (Exception e) {
+                }
+            }
+        }
+
+        if (filtered.isEmpty()) {
+            System.out.printf("No expenses found for category '%s' in the selected period.%n", category);
+            pausePrompt();
+            return;
+        }
+
+        Map<YearMonth, Double> monthlyTotals = new HashMap<>();
+
+        for (Transaction transaction : filtered) {
+            LocalDate date = LocalDate.parse(transaction.getDate(), DATE_FORMATTER);
+            YearMonth yearMonth = YearMonth.from(date);
+
+            double currentAmount = monthlyTotals.getOrDefault(yearMonth, 0.0);
+            monthlyTotals.put(yearMonth, currentAmount + transaction.getAmount());
+        }
+
+        YearMonth current = YearMonth.from(startDate);
+        YearMonth end = YearMonth.from(endDate);
+
+        double maxAmount = 0.0;
+        for (Double amount : monthlyTotals.values()) {
+            if (amount > maxAmount) {
+                maxAmount = amount;
+            }
+        }
+
+        System.out.println("Month      | Amount     | Trend");
+        System.out.println("-----------+------------+--------------------");
+
+        while (!current.isAfter(end)) {
+            double amount = monthlyTotals.getOrDefault(current, 0.0);
+            int barLength = maxAmount > 0 ? (int)((amount / maxAmount) * 20) : 0;
+            String bar = "█".repeat(barLength);
+
+            System.out.printf("%s-%02d | $%9.2f | %s%s%s%n",
+                    current.getYear(), current.getMonthValue(),
+                    amount,
+                    RED, bar, RESET);
+
+            current = current.plusMonths(1);
+        }
 
         pausePrompt();
     }
