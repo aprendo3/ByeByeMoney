@@ -93,6 +93,25 @@ public class DataStore {
                 }
             }
 
+            Node nodeRecurring = ((Element)nodeUser).getElementsByTagName("recurringTransactions").item(0);
+
+            if (nodeRecurring != null && nodeRecurring.hasChildNodes()) {
+                NodeList recurrings = nodeRecurring.getChildNodes();
+                for (int i = 0; i < recurrings.getLength(); i++) {
+                    Node nodeRec = recurrings.item(i);
+                    if (nodeRec.getNodeType() == Node.TEXT_NODE) continue;
+
+                    var description = ((Element)nodeRec).getElementsByTagName("description").item(0).getTextContent();
+                    var amount = Double.parseDouble(((Element)nodeRec).getElementsByTagName("amount").item(0).getTextContent());
+                    var type = TransactionType.valueOf(((Element)nodeRec).getElementsByTagName("type").item(0).getTextContent());
+                    var category = ((Element)nodeRec).getElementsByTagName("category").item(0).getTextContent();
+                    var nextDueDate = ((Element)nodeRec).getElementsByTagName("nextDueDate").item(0).getTextContent();
+
+                    RecurringTransaction recurring = new RecurringTransaction(description, amount, type, category, nextDueDate);
+                    user.recurringTransactions.add(recurring);
+                }
+            }
+
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -249,6 +268,49 @@ public class DataStore {
                 }
 
                 nodeUser.appendChild(goalsElement);
+            }
+
+            Node nodeRecurring = ((Element)nodeUser).getElementsByTagName("recurringTransactions").item(0);
+
+            if (nodeRecurring != null) {
+                nodeUser.removeChild(nodeRecurring);
+            }
+
+            if (!user.recurringTransactions.isEmpty()) {
+                Element recurringElement = doc.createElement("recurringTransactions");
+
+                for (RecurringTransaction recurring : user.recurringTransactions) {
+                    Element recElement = doc.createElement("recurring");
+
+                    Element description = doc.createElement("description");
+                    description.appendChild(doc.createTextNode(recurring.getDescription()));
+
+                    Element amount = doc.createElement("amount");
+                    amount.appendChild(doc.createTextNode(String.valueOf(recurring.getAmount())));
+
+                    Element type = doc.createElement("type");
+                    type.appendChild(doc.createTextNode(recurring.getType().toString()));
+
+                    Element category = doc.createElement("category");
+                    category.appendChild(doc.createTextNode(recurring.getCategory()));
+
+                    Element frequency = doc.createElement("frequency");
+                    frequency.appendChild(doc.createTextNode(recurring.getFrequency()));
+
+                    Element nextDueDate = doc.createElement("nextDueDate");
+                    nextDueDate.appendChild(doc.createTextNode(recurring.getNextDueDate()));
+
+                    recElement.appendChild(description);
+                    recElement.appendChild(amount);
+                    recElement.appendChild(type);
+                    recElement.appendChild(category);
+                    recElement.appendChild(frequency);
+                    recElement.appendChild(nextDueDate);
+
+                    recurringElement.appendChild(recElement);
+                }
+
+                nodeUser.appendChild(recurringElement);
             }
 
             docToFile(doc, filename);

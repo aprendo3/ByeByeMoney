@@ -107,11 +107,67 @@ class Transaction {
     }
 }
 
+class RecurringTransaction {
+    private String description;
+    private double amount;
+    private TransactionType type;
+    private String category;
+    private String frequency = "MONTHLY";
+    private String nextDueDate;
+
+    public RecurringTransaction(String description, double amount, TransactionType type, String category, String nextDueDate) {
+        this.description = description;
+        this.amount = amount;
+        this.type = type;
+        this.category = category;
+        this.nextDueDate = nextDueDate;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public double getAmount() {
+        return amount;
+    }
+
+    public TransactionType getType() {
+        return type;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public String getFrequency() {
+        return frequency;
+    }
+
+    public String getNextDueDate() {
+        return nextDueDate;
+    }
+
+    public void setNextDueDate(String nextDueDate) {
+        this.nextDueDate = nextDueDate;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%s | %-15s | %8.2f | %-10s | %s",
+                nextDueDate,
+                description.substring(0, Math.min(description.length(), 15)),
+                (type == TransactionType.EXPENSE ? -1 : 1) * amount,
+                category,
+                type);
+    }
+}
+
 class User {
     private String username;
     private String password;
     public List<Transaction> transactions = new ArrayList<>();
     public List<BudgetGoal> goals = new ArrayList<>();
+    public List<RecurringTransaction> recurringTransactions = new ArrayList<>();
 
     public User(String username, String password) {
         this.username = username;
@@ -165,6 +221,8 @@ public class Main {
             System.out.printf("[%sS%s] Summary Report%n", GREEN, RESET);
             System.out.printf("[%sC%s] Manage Categories%n", GREEN, RESET);
             System.out.printf("[%sG%s] Manage Goals%n", GREEN, RESET);
+            System.out.printf("[%sR%s] Manage Recurring%n", GREEN, RESET);
+            System.out.printf("[%sL%s] Log Due Recurring%n", GREEN, RESET);
             System.out.printf("[%sQ%s] Quit%n", RED, RESET);
             System.out.println();
             System.out.printf("Please select an %soption%s: ", BLUE, RESET);
@@ -191,7 +249,14 @@ public class Main {
                 showSummaryReport();
                 cleanScreen();
                 break;
-
+            case "r":
+                manageRecurringTransactions();
+                cleanScreen();
+                break;
+            case "l":
+                logDueRecurringTransactions();
+                cleanScreen();
+                break;
             case "q":
                 running = false;
                 break;
@@ -905,6 +970,225 @@ public class Main {
         }
 
         return new Object[] { newSortField, newSortAscending };
+    }
+
+    private static void manageRecurringTransactions() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sManage Recurring%s%n%n", BLUE, RED, BLUE, RESET);
+
+        boolean running = true;
+        while (running) {
+            System.out.println();
+            System.out.printf("[%sA%s] Add Recurring%n", GREEN, RESET);
+            System.out.printf("[%sL%s] List Recurring%n", GREEN, RESET);
+            System.out.printf("[%sD%s] Delete Recurring%n", GREEN, RESET);
+            System.out.printf("[%sQ%s] Back to Main Menu%n", RED, RESET);
+            System.out.println();
+            System.out.printf("Please select an %soption%s: ", BLUE, RESET);
+
+            String choice = scanner.nextLine().toLowerCase();
+
+            switch (choice) {
+            case "a":
+                addRecurringTransaction();
+                break;
+            case "l":
+                listRecurringTransactions();
+                break;
+            case "d":
+                deleteRecurringTransaction();
+                break;
+            case "q":
+                running = false;
+                break;
+            default:
+                System.out.println("Invalid choice. Please try again.");
+                break;
+            }
+        }
+    }
+
+    private static void addRecurringTransaction() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sAdd Recurring Transaction%s%n%n", BLUE, RED, BLUE, RESET);
+
+        TransactionType type;
+        while (true) {
+            System.out.print("Enter type (I for Income, E for Expense): ");
+            String typeChoice = scanner.nextLine().toUpperCase();
+            if ("I".equals(typeChoice)) {
+                type = TransactionType.INCOME;
+                break;
+            } else if ("E".equals(typeChoice)) {
+                type = TransactionType.EXPENSE;
+                break;
+            } else {
+                System.out.println("Invalid type. Please enter I or E.");
+            }
+        }
+
+        System.out.print("Enter description: ");
+        String description = scanner.nextLine();
+
+        double amount;
+        while (true) {
+            System.out.print("Enter amount (positive number): ");
+            Double parsedAmount = tryToParseDouble(scanner.nextLine());
+            if (parsedAmount != null && parsedAmount > 0) {
+                amount = parsedAmount;
+                break;
+            } else {
+                System.out.println("Invalid amount. Please enter a positive number.");
+            }
+        }
+
+        String category = promptForCategory(type);
+
+        String nextDueDate;
+        while (true) {
+            System.out.printf("Enter first due date (YYYYMMDD, Enter for today %s): ", LocalDate.now().format(DATE_FORMATTER));
+            nextDueDate = scanner.nextLine();
+            if (nextDueDate.isEmpty()) {
+                nextDueDate = LocalDate.now().format(DATE_FORMATTER);
+                break;
+            }
+            if (isValidDate(nextDueDate)) {
+                break;
+            } else {
+                System.out.println("Invalid date format. Use YYYYMMDD.");
+            }
+        }
+
+        RecurringTransaction recurring = new RecurringTransaction(description, amount, type, category, nextDueDate);
+        user.recurringTransactions.add(recurring);
+        store.updateUser(user);
+
+        System.out.println("\nRecurring transaction added successfully!");
+        pausePrompt();
+    }
+
+    private static void listRecurringTransactions() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sList Recurring Transactions%s%n%n", BLUE, RED, BLUE, RESET);
+
+        if (user.recurringTransactions.isEmpty()) {
+            System.out.println("No recurring transactions found.");
+            pausePrompt();
+            return;
+        }
+
+        System.out.println("#  | Next Due  | Description     |   Amount | Category   | Type");
+        System.out.println("---+-----------+-----------------+----------+------------+---------");
+
+        for (int i = 0; i < user.recurringTransactions.size(); i++) {
+            System.out.printf("%s%2d%s | %s%n", GREEN, i + 1, RESET, user.recurringTransactions.get(i));
+        }
+
+        pausePrompt();
+    }
+
+    private static void deleteRecurringTransaction() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sDelete Recurring Transaction%s%n%n", BLUE, RED, BLUE, RESET);
+
+        if (user.recurringTransactions.isEmpty()) {
+            System.out.println("No recurring transactions found.");
+            pausePrompt();
+            return;
+        }
+
+        System.out.println("#  | Next Due  | Description     |   Amount | Category   | Type");
+        System.out.println("---+-----------+-----------------+----------+------------+---------");
+
+        for (int i = 0; i < user.recurringTransactions.size(); i++) {
+            System.out.printf("%s%2d%s | %s%n", GREEN, i + 1, RESET, user.recurringTransactions.get(i));
+        }
+
+        System.out.print("\nEnter recurring transaction number to delete: ");
+        String input = scanner.nextLine();
+        Integer choice = tryToParse(input);
+
+        if (choice == null || choice < 1 || choice > user.recurringTransactions.size()) {
+            System.out.println("Invalid transaction number.");
+            pausePrompt();
+            return;
+        }
+
+        RecurringTransaction transaction = user.recurringTransactions.get(choice - 1);
+
+        System.out.printf("%nAre you sure you want to delete this recurring transaction?%n");
+        System.out.println(transaction);
+        System.out.print("Confirm deletion (Y/N): ");
+
+        String confirm = scanner.nextLine().toLowerCase();
+        if ("y".equals(confirm)) {
+            user.recurringTransactions.remove(choice - 1);
+            store.updateUser(user);
+            System.out.println("Recurring transaction deleted successfully!");
+        } else {
+            System.out.println("Deletion cancelled.");
+        }
+
+        pausePrompt();
+    }
+
+    private static void logDueRecurringTransactions() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sLog Due Recurring Transactions%s%n%n", BLUE, RED, BLUE, RESET);
+
+        if (user.recurringTransactions.isEmpty()) {
+            System.out.println("No recurring transactions found.");
+            pausePrompt();
+            return;
+        }
+
+        LocalDate today = LocalDate.now();
+        boolean changesMade = false;
+        int logged = 0;
+
+        for (RecurringTransaction recurring : user.recurringTransactions) {
+            LocalDate dueDate = LocalDate.parse(recurring.getNextDueDate(), DATE_FORMATTER);
+
+            if (!dueDate.isAfter(today)) {
+                System.out.println("Due recurring transaction:");
+                System.out.println(recurring);
+                System.out.printf("Log this transaction for %s? (y/N/s)kip all: ", recurring.getNextDueDate());
+
+                String choice = scanner.nextLine().toLowerCase();
+
+                if ("s".equals(choice)) {
+                    System.out.println("Skipping all remaining due transactions.");
+                    break;
+                } else if ("y".equals(choice)) {
+                    Transaction transaction = new Transaction(
+                            recurring.getNextDueDate(),
+                            recurring.getDescription(),
+                            recurring.getAmount(),
+                            recurring.getType(),
+                            recurring.getCategory());
+
+                    user.transactions.add(transaction);
+
+                    LocalDate nextDate = dueDate.plusMonths(1);
+                    recurring.setNextDueDate(nextDate.format(DATE_FORMATTER));
+
+                    changesMade = true;
+                    logged++;
+
+                    System.out.println("Transaction logged successfully.");
+                    System.out.printf("Next due date set to: %s%n%n", recurring.getNextDueDate());
+                }
+            }
+        }
+
+        if (changesMade) {
+            store.updateUser(user);
+            System.out.printf("\nLogged %d recurring transactions.%n", logged);
+        } else {
+            System.out.println("\nNo transactions were logged.");
+        }
+
+        pausePrompt();
     }
 
     private static String[] getCategoriesForType(TransactionType type) {
