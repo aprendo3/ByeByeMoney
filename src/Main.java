@@ -12,6 +12,28 @@ enum TransactionType {
     INCOME, EXPENSE
 }
 
+class BudgetGoal {
+    private String category;
+    private double amount;
+
+    public BudgetGoal(String category, double amount) {
+        this.category = category;
+        this.amount = amount;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public double getAmount() {
+        return amount;
+    }
+
+    public void setAmount(double amount) {
+        this.amount = amount;
+    }
+}
+
 class Transaction {
     private String date;
     private String description;
@@ -62,6 +84,7 @@ class User {
     private String username;
     private String password;
     public List<Transaction> transactions = new ArrayList<>();
+    public List<BudgetGoal> goals = new ArrayList<>();
 
     public User(String username, String password) {
         this.username = username;
@@ -113,6 +136,7 @@ public class Main {
             System.out.printf("[%sA%s] Add Transaction\n", GREEN, RESET);
             System.out.printf("[%sV%s] View Transactions\n", GREEN, RESET);
             System.out.printf("[%sC%s] Manage Categories\n", GREEN, RESET);
+            System.out.printf("[%sG%s] Manage Goals\n", GREEN, RESET);
             System.out.printf("[%sS%s] Summary Report\n", GREEN, RESET);
             System.out.printf("[%sQ%s] Quit\n", RED, RESET);
             System.out.println();
@@ -130,6 +154,10 @@ public class Main {
                 break;
             case "c":
                 manageCategories();
+                cleanScreen();
+                break;
+            case "g":
+                manageGoals();
                 cleanScreen();
                 break;
             case "s":
@@ -553,6 +581,165 @@ public class Main {
         }
     }
 
+    private static void manageGoals() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sManage Goals%s\n\n", BLUE, RED, BLUE, RESET);
+
+        boolean running = true;
+        while (running) {
+            System.out.println();
+            System.out.printf("[%sA%s] Add/Update Goal\n", GREEN, RESET);
+            System.out.printf("[%sD%s] Delete Goal\n", GREEN, RESET);
+            System.out.printf("[%sL%s] List Goals\n", GREEN, RESET);
+            System.out.printf("[%sQ%s] Back to Main Menu\n", RED, RESET);
+            System.out.println();
+            System.out.printf("Please select an %soption%s: ", BLUE, RESET);
+
+            String choice = scanner.nextLine().toLowerCase();
+
+            switch (choice) {
+            case "a":
+                addOrUpdateGoal();
+                break;
+            case "d":
+                deleteGoal();
+                break;
+            case "l":
+                listGoals();
+                break;
+            case "q":
+                running = false;
+                break;
+            default:
+                System.out.println("Invalid choice. Please try again.");
+                break;
+            }
+        }
+    }
+
+    private static void listGoals() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sManage Goals%s > %sList Goals%s\n\n", BLUE, RED, BLUE, RESET, BLUE, RESET);
+
+        if (user.goals.isEmpty()) {
+            System.out.println("No budget goals set.");
+            pausePrompt();
+            return;
+        }
+
+        System.out.println("Current Budget Goals:\n");
+        for (int i = 0; i < user.goals.size(); i++) {
+            BudgetGoal goal = user.goals.get(i);
+            System.out.printf("%d. %s - Goal: $%.2f\n", i + 1, goal.getCategory(), goal.getAmount());
+        }
+
+        pausePrompt();
+    }
+
+    private static void addOrUpdateGoal() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sManage Goals%s > %sAdd/Update Goal%s\n\n", BLUE, RED, BLUE, RESET, BLUE, RESET);
+
+        if (expCats.isEmpty()) {
+            System.out.println("No expense categories available. Please add expense categories first.");
+            pausePrompt();
+            return;
+        }
+
+        System.out.println("Select an expense category:\n");
+        for (int i = 0; i < expCats.size(); i++) {
+            System.out.printf("%d. %s\n", i + 1, expCats.get(i));
+        }
+
+        System.out.print("\nEnter category number: ");
+        String input = scanner.nextLine();
+        Integer choice = tryToParse(input);
+
+        if (choice == null || choice < 1 || choice > expCats.size()) {
+            System.out.println("Invalid choice.");
+            pausePrompt();
+            return;
+        }
+
+        String category = expCats.get(choice - 1);
+
+        double amount;
+        while (true) {
+            System.out.print("Enter monthly budget amount (positive number): ");
+            Double parsedAmount = tryToParseDouble(scanner.nextLine());
+            if (parsedAmount != null && parsedAmount > 0) {
+                amount = parsedAmount;
+                break;
+            } else {
+                System.out.println("Invalid amount. Please enter a positive number.");
+            }
+        }
+
+        BudgetGoal existingGoal = null;
+        for (BudgetGoal goal : user.goals) {
+            if (goal.getCategory().equals(category)) {
+                existingGoal = goal;
+                break;
+            }
+        }
+
+        if (existingGoal != null) {
+            existingGoal.setAmount(amount);
+            System.out.printf("Budget goal for '%s' updated to $%.2f\n", category, amount);
+        } else {
+            user.goals.add(new BudgetGoal(category, amount));
+            System.out.printf("Budget goal for '%s' set to $%.2f\n", category, amount);
+        }
+
+        store.updateUser(user);
+        pausePrompt();
+    }
+
+    private static void deleteGoal() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sManage Goals%s > %sDelete Goal%s\n\n", BLUE, RED, BLUE, RESET, BLUE, RESET);
+
+        if (user.goals.isEmpty()) {
+            System.out.println("No budget goals to delete.");
+            pausePrompt();
+            return;
+        }
+
+        System.out.println("Select a goal to delete:\n");
+        for (int i = 0; i < user.goals.size(); i++) {
+            BudgetGoal goal = user.goals.get(i);
+            System.out.printf("%d. %s - Goal: $%.2f\n", i + 1, goal.getCategory(), goal.getAmount());
+        }
+
+        System.out.print("\nEnter goal number: ");
+        String input = scanner.nextLine();
+        Integer choice = tryToParse(input);
+
+        if (choice != null && choice >= 1 && choice <= user.goals.size()) {
+            BudgetGoal removed = user.goals.remove(choice - 1);
+            store.updateUser(user);
+            System.out.printf("Budget goal for '%s' deleted successfully!\n", removed.getCategory());
+        } else {
+            System.out.println("Invalid choice.");
+        }
+
+        pausePrompt();
+    }
+
+    private static BudgetGoal findGoalForCategory(String category) {
+        if (user == null || user.goals.isEmpty()) {
+            return null;
+        }
+
+        for (BudgetGoal goal : user.goals) {
+            if (goal.getCategory().equals(category)) {
+                return goal;
+            }
+        }
+
+        return null;
+    }
+
     private static void showSummaryReport() {
         cleanScreen();
         System.out.printf("%sBye Bye Money%s > %sSummary Report%s\n\n", BLUE, RED, BLUE, RESET);
@@ -657,8 +844,23 @@ public class Main {
             sortedExpenses.sort((e1, e2) -> Double.compare(e2.getValue(), e1.getValue()));
 
             for (Map.Entry<String, Double> entry : sortedExpenses) {
-                double percentage = (entry.getValue() / totalExpenses) * 100;
-                System.out.printf("%-15s: $%10.2f (%5.1f%%)\n", entry.getKey(), entry.getValue(), percentage);
+                String category = entry.getKey();
+                double spent = entry.getValue();
+                double percentage = (spent / totalExpenses) * 100;
+
+                BudgetGoal goal = findGoalForCategory(category);
+                if (goal != null) {
+                    double goalAmount = goal.getAmount();
+                    double progressPercentage = (spent / goalAmount) * 100;
+                    String progressColor = progressPercentage <= 100 ? GREEN : RED;
+
+                    System.out.printf("%-15s: $%10.2f (%5.1f%%) - Goal: $%.2f %s(%5.1f%%)%s\n",
+                            category, spent, percentage, goalAmount,
+                            progressColor, progressPercentage, RESET);
+                } else {
+                    System.out.printf("%-15s: $%10.2f (%5.1f%%)\n",
+                            category, spent, percentage);
+                }
             }
         }
 

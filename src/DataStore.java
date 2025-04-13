@@ -72,12 +72,30 @@ public class DataStore {
                 }
             }
 
+            Node nodeGoals = ((Element)nodeUser).getElementsByTagName("goals").item(0);
 
+            if (nodeGoals != null && nodeGoals.hasChildNodes()) {
+                NodeList goals = nodeGoals.getChildNodes();
+                for (int i = 0; i < goals.getLength(); i++) {
+                    Node nodeGoal = goals.item(i);
+                    if (nodeGoal.getNodeType() == Node.TEXT_NODE) continue;
+
+                    Node categoryNode = ((Element)nodeGoal).getElementsByTagName("categoryName").item(0);
+                    Node amountNode = ((Element)nodeGoal).getElementsByTagName("monthlyAmount").item(0);
+
+                    if (categoryNode != null && amountNode != null) {
+                        String category = categoryNode.getTextContent();
+                        double amount = Double.parseDouble(amountNode.getTextContent());
+
+                        BudgetGoal goal = new BudgetGoal(category, amount);
+                        user.goals.add(goal);
+                    }
+                }
+            }
 
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-
 
         return user;
     }
@@ -205,6 +223,33 @@ public class DataStore {
             }
 
             nodeUser.appendChild(nodeTransactions);
+
+            Node nodeGoals = ((Element)nodeUser).getElementsByTagName("goals").item(0);
+
+            if (nodeGoals != null) {
+                nodeUser.removeChild(nodeGoals);
+            }
+
+            if (!user.goals.isEmpty()) {
+                Element goalsElement = doc.createElement("goals");
+
+                for (BudgetGoal goal : user.goals) {
+                    Element goalElement = doc.createElement("goal");
+
+                    Element categoryName = doc.createElement("categoryName");
+                    categoryName.appendChild(doc.createTextNode(goal.getCategory()));
+
+                    Element monthlyAmount = doc.createElement("monthlyAmount");
+                    monthlyAmount.appendChild(doc.createTextNode(String.valueOf(goal.getAmount())));
+
+                    goalElement.appendChild(categoryName);
+                    goalElement.appendChild(monthlyAmount);
+
+                    goalsElement.appendChild(goalElement);
+                }
+
+                nodeUser.appendChild(goalsElement);
+            }
 
             docToFile(doc, filename);
 
