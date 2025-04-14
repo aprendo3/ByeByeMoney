@@ -1293,6 +1293,7 @@ public class Main {
         System.out.printf("%sBye Bye Money%s > %sAnalyze Data%s%n%n", BLUE, RED, BLUE, RESET);
 
         System.out.printf("[%sC%s] Category Trend%n", GREEN, RESET);
+        System.out.printf("[%sP%s] Period Comparison%n", GREEN, RESET);
         System.out.printf("[%sQ%s] Back to Main Menu%n", RED, RESET);
         System.out.println();
         System.out.printf("Please select an %soption%s: ", BLUE, RESET);
@@ -1302,6 +1303,9 @@ public class Main {
         switch (choice) {
         case "c":
             showCategoryTrendReport();
+            break;
+        case "p":
+            showPeriodComparisonReport();
             break;
         case "q":
             return;
@@ -1446,6 +1450,148 @@ public class Main {
                     RED, bar, RESET);
 
             current = current.plusMonths(1);
+        }
+
+        pausePrompt();
+    }
+
+    private static void showPeriodComparisonReport() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sAnalyze Data%s > %sPeriod Comparison%s%n%n",
+                BLUE, RED, BLUE, RESET, BLUE, RESET);
+
+        System.out.printf("[%sM%s] Monthly Comparison%n", GREEN, RESET);
+        System.out.printf("[%sY%s] Yearly Comparison%n", GREEN, RESET);
+        System.out.printf("[%sQ%s] Back%n", RED, RESET);
+        System.out.println();
+        System.out.printf("Please select an %soption%s: ", BLUE, RESET);
+
+        String choice = scanner.nextLine().toLowerCase();
+
+        switch (choice) {
+        case "m":
+            showMonthlyComparison();
+            break;
+        case "y":
+            showYearlyComparison();
+            break;
+        case "q":
+            return;
+        default:
+            System.out.println("Invalid choice. Please try again.");
+            pausePrompt();
+            showPeriodComparisonReport();
+            break;
+        }
+    }
+
+    private static void showMonthlyComparison() {
+        LocalDate today = LocalDate.now();
+
+        LocalDate currentMonthStart = today.withDayOfMonth(1);
+        LocalDate currentMonthEnd = today;
+
+        LocalDate prevMonthStart = currentMonthStart.minusMonths(1);
+        LocalDate prevMonthEnd = currentMonthStart.minusDays(1);
+
+        String currentStartStr = currentMonthStart.format(DATE_FORMATTER);
+        String currentEndStr = currentMonthEnd.format(DATE_FORMATTER);
+        String prevStartStr = prevMonthStart.format(DATE_FORMATTER);
+        String prevEndStr = prevMonthEnd.format(DATE_FORMATTER);
+
+        String currentPeriod = String.format("%s-%s", currentStartStr, currentEndStr);
+        String prevPeriod = String.format("%s-%s", prevStartStr, prevEndStr);
+
+        showPeriodComparison("Monthly", currentPeriod, prevPeriod, currentStartStr, currentEndStr, prevStartStr, prevEndStr);
+    }
+
+    private static void showYearlyComparison() {
+        LocalDate today = LocalDate.now();
+
+        LocalDate currentYearStart = today.withDayOfYear(1);
+        LocalDate currentYearEnd = today;
+
+        LocalDate prevYearStart = currentYearStart.minusYears(1);
+        LocalDate prevYearEnd = currentYearStart.minusDays(1);
+
+        String currentStartStr = currentYearStart.format(DATE_FORMATTER);
+        String currentEndStr = currentYearEnd.format(DATE_FORMATTER);
+        String prevStartStr = prevYearStart.format(DATE_FORMATTER);
+        String prevEndStr = prevYearEnd.format(DATE_FORMATTER);
+
+        String currentPeriod = String.format("%s-%s", currentStartStr, currentEndStr);
+        String prevPeriod = String.format("%s-%s", prevStartStr, prevEndStr);
+
+        showPeriodComparison("Yearly", currentPeriod, prevPeriod, currentStartStr, currentEndStr, prevStartStr, prevEndStr);
+    }
+
+    private static void showPeriodComparison(String periodType, String currentPeriod, String prevPeriod,
+            String currentStartStr, String currentEndStr, String prevStartStr, String prevEndStr) {
+
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sAnalyze Data%s > %s%s Comparison%s%n%n",
+                BLUE, RED, BLUE, RESET, BLUE, periodType, RESET);
+
+        System.out.printf("Comparing Current %s (%s) with Previous %s (%s)%n%n",
+                periodType, currentPeriod, periodType, prevPeriod);
+
+        List<Transaction> currentTransactions = applyTransactionFilters(user.transactions, null, null, currentStartStr, currentEndStr);
+        List<Transaction> prevTransactions = applyTransactionFilters(user.transactions, null, null, prevStartStr, prevEndStr);
+
+        double currentIncome = 0;
+        double currentExpenses = 0;
+        double prevIncome = 0;
+        double prevExpenses = 0;
+
+        for (Transaction transaction : currentTransactions) {
+            if (transaction.getType() == TransactionType.INCOME) {
+                currentIncome += transaction.getAmount();
+            } else {
+                currentExpenses += transaction.getAmount();
+            }
+        }
+
+        for (Transaction transaction : prevTransactions) {
+            if (transaction.getType() == TransactionType.INCOME) {
+                prevIncome += transaction.getAmount();
+            } else {
+                prevExpenses += transaction.getAmount();
+            }
+        }
+
+        double currentNet = currentIncome - currentExpenses;
+        double prevNet = prevIncome - prevExpenses;
+
+        double incomeChange = currentIncome - prevIncome;
+        double expensesChange = currentExpenses - prevExpenses;
+        double netChange = currentNet - prevNet;
+
+        double incomeChangePct = prevIncome > 0 ? (incomeChange / prevIncome) * 100 : 0;
+        double expensesChangePct = prevExpenses > 0 ? (expensesChange / prevExpenses) * 100 : 0;
+        double netChangePct = prevNet != 0 ? (netChange / Math.abs(prevNet)) * 100 : 0;
+
+        String incomeColor = incomeChange >= 0 ? GREEN : RED;
+        String expensesColor = expensesChange <= 0 ? GREEN : RED;
+        String netColor = netChange >= 0 ? GREEN : RED;
+
+        System.out.println("Item       | Current Period | Previous Period | Change        | Change %");
+        System.out.println("-----------+----------------+-----------------+---------------+----------");
+
+        System.out.printf("Income     | $%13.2f | $%13.2f | %s$%11.2f%s | %s%+7.2f%%%s%n",
+                currentIncome, prevIncome, incomeColor, incomeChange, RESET, incomeColor, incomeChangePct, RESET);
+
+        System.out.printf("Expenses   | $%13.2f | $%13.2f | %s$%11.2f%s | %s%+7.2f%%%s%n",
+                currentExpenses, prevExpenses, expensesColor, expensesChange, RESET, expensesColor, expensesChangePct, RESET);
+
+        System.out.printf("Net Balance| $%13.2f | $%13.2f | %s$%11.2f%s | %s%+7.2f%%%s%n",
+                currentNet, prevNet, netColor, netChange, RESET, netColor, netChangePct, RESET);
+
+        if (currentTransactions.isEmpty() && prevTransactions.isEmpty()) {
+            System.out.println("\nNo transactions found in either period.");
+        } else if (currentTransactions.isEmpty()) {
+            System.out.println("\nNo transactions found in the current period.");
+        } else if (prevTransactions.isEmpty()) {
+            System.out.println("\nNo transactions found in the previous period.");
         }
 
         pausePrompt();
