@@ -192,6 +192,7 @@ public class Main {
     static Scanner scanner = new Scanner(System.in);
     static boolean logged = false;
     static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
+    static final String DELIMITER = ":";
 
     static DataStore store = new DataStore();
     static User user = null;
@@ -208,6 +209,25 @@ public class Main {
             cleanScreen();
             showUserMenu();
         }
+    }
+
+    private static String getParentCategory(String category) {
+        if (category == null || !category.contains(DELIMITER)) {
+            return category;
+        }
+        return category.split(DELIMITER)[0];
+    }
+
+    private static String getChildCategory(String category) {
+        if (category == null || !category.contains(DELIMITER)) {
+            return "";
+        }
+        String[] parts = category.split(DELIMITER);
+        return parts.length > 1 ? parts[1] : "";
+    }
+
+    private static boolean isSubcategory(String category) {
+        return category != null && category.contains(DELIMITER);
     }
 
     private static void showUserMenu() {
@@ -521,7 +541,7 @@ public class Main {
 
             if (!filtered.isEmpty()) {
                 System.out.println("#  | Date     | Description     |   Amount | Category   | Type");
-                System.out.println("---+---------+-----------------+----------+------------+---------");
+                System.out.println("---+---------+------------------+----------+------------+---------");
 
                 for (int i = startIndex; i < endIndex; i++) {
                     System.out.printf("%s%2d%s | %s%n", GREEN, i + 1, RESET, filtered.get(i));
@@ -1399,7 +1419,17 @@ public class Main {
 
         List<Transaction> filtered = new ArrayList<>();
         for (Transaction transaction : expenseTransactions) {
+            boolean categoryMatch = false;
+
             if (transaction.getCategory().equalsIgnoreCase(category)) {
+                categoryMatch = true;
+            }
+            else if (!isSubcategory(category) && isSubcategory(transaction.getCategory()) &&
+                     getParentCategory(transaction.getCategory()).equalsIgnoreCase(category)) {
+                categoryMatch = true;
+            }
+
+            if (categoryMatch) {
                 try {
                     LocalDate transactionDate = LocalDate.parse(transaction.getDate(), DATE_FORMATTER);
                     if (!transactionDate.isBefore(startDate) && !transactionDate.isAfter(endDate)) {
@@ -1605,9 +1635,50 @@ public class Main {
     private static String promptForCategory(TransactionType type) {
         String[] categories = getCategoriesForType(type);
 
+        Map<String, List<String>> bigParent = new HashMap<>();
+        List<String> pCategories = new ArrayList<>();
+        List<String> orphans = new ArrayList<>();
+
+        for (String category : categories) {
+            if (isSubcategory(category)) {
+                String parent = getParentCategory(category);
+                boolean parentExists = false;
+                for (String cat : categories) {
+                    if (!isSubcategory(cat) && cat.equals(parent)) {
+                        parentExists = true;
+                        break;
+                    }
+                }
+
+                if (parentExists) {
+                    bigParent.computeIfAbsent(parent, k -> new ArrayList<>()).add(category);
+                } else {
+                    orphans.add(category);
+                }
+            } else {
+                pCategories.add(category);
+            }
+        }
+
+        List<String> displayCategories = new ArrayList<>();
+        for (String parent : pCategories) {
+            displayCategories.add(parent);
+            List<String> subs = bigParent.get(parent);
+            if (subs != null) {
+                displayCategories.addAll(subs);
+            }
+        }
+        displayCategories.addAll(orphans);
+
         System.out.println("\nSelect a category:");
-        for (int i = 0; i < categories.length; i++) {
-            System.out.printf("%s%d%s. %s%n", GREEN, i + 1, RESET, categories[i]);
+        for (int i = 0; i < displayCategories.size(); i++) {
+            String category = displayCategories.get(i);
+            if (isSubcategory(category) && bigParent.containsKey(getParentCategory(category))) {
+                String childName = getChildCategory(category);
+                System.out.printf("%s%d%s. ↳ %s%n", GREEN, i + 1, RESET, childName);
+            } else {
+                System.out.printf("%s%d%s. %s%n", GREEN, i + 1, RESET, category);
+            }
         }
         System.out.printf("[%sA%s] Add New Category%n", GREEN, RESET);
 
@@ -1623,15 +1694,17 @@ public class Main {
 
             Integer choice = tryToParse(input);
 
-            if (choice != null && choice >= 1 && choice <= categories.length) {
-                return categories[choice - 1];
+            if (choice != null && choice >= 1 && choice <= displayCategories.size()) {
+                return displayCategories.get(choice - 1);
             } else {
-                System.out.println("Invalid choice. Please enter a number between 1 and " + categories.length + " or A.");
+                System.out.println("Invalid choice. Please enter a number between 1 and " + displayCategories.size() + " or A.");
             }
         }
     }
 
     private static String promptForNewCategory() {
+        System.out.println("You can use Parent:Child format for subcategories (e.g., Food:Groceries)");
+
         while (true) {
             System.out.print("Enter new category name: ");
             String newCategory = scanner.nextLine().trim();
@@ -1698,12 +1771,53 @@ public class Main {
 
     private static void showAllCategories() {
         System.out.println("Available Categories:\n");
+
+        Map<String, List<String>> bigParent = new HashMap<>();
         for (String category : incCats) {
-            System.out.printf("  %s (INCOME)%n", category);
+            if (isSubcategory(category)) {
+                String parent = getParentCategory(category);
+                bigParent.computeIfAbsent(parent, k -> new ArrayList<>()).add(category);
+            }
+        }
+
+        for (String category : incCats) {
+            if (!isSubcategory(category)) {
+                System.out.printf("  %s (INCOME)%n", category);
+
+                List<String> subs = bigParent.get(category);
+                if (subs != null) {
+                    for (String sub : subs) {
+                        String childName = getChildCategory(sub);
+                        System.out.printf("    ↳ %s%n", childName);
+                    }
+                }
+            } else if (!bigParent.containsKey(getParentCategory(category))) {
+                System.out.printf("  %s (INCOME)%n", category);
+            }
+        }
+
+        Map<String, List<String>> eParent = new HashMap<>();
+        for (String category : expCats) {
+            if (isSubcategory(category)) {
+                String parent = getParentCategory(category);
+                eParent.computeIfAbsent(parent, k -> new ArrayList<>()).add(category);
+            }
         }
 
         for (String category : expCats) {
-            System.out.printf("  %s (EXPENSE)%n", category);
+            if (!isSubcategory(category)) {
+                System.out.printf("  %s (EXPENSE)%n", category);
+
+                List<String> subs = eParent.get(category);
+                if (subs != null) {
+                    for (String sub : subs) {
+                        String childName = getChildCategory(sub);
+                        System.out.printf("    ↳ %s%n", childName);
+                    }
+                }
+            } else if (!eParent.containsKey(getParentCategory(category))) {
+                System.out.printf("  %s (EXPENSE)%n", category);
+            }
         }
     }
 
@@ -1801,6 +1915,16 @@ public class Main {
             if (transaction.getType() == type &&
                 category.equalsIgnoreCase(transaction.getCategory())) {
                 return true;
+            }
+        }
+
+        if (!isSubcategory(category)) {
+            for (Transaction transaction : user.transactions) {
+                if (transaction.getType() == type &&
+                    isSubcategory(transaction.getCategory()) &&
+                    category.equalsIgnoreCase(getParentCategory(transaction.getCategory()))) {
+                    return true;
+                }
             }
         }
 
@@ -2393,6 +2517,15 @@ public class Main {
             }
         }
 
+        if (isSubcategory(category)) {
+            String parentCategory = getParentCategory(category);
+            for (BudgetGoal goal : user.goals) {
+                if (goal.getCategory().equals(parentCategory)) {
+                    return goal;
+                }
+            }
+        }
+
         return null;
     }
 
@@ -2405,6 +2538,9 @@ public class Main {
             pausePrompt();
             return;
         }
+
+        System.out.print("Aggregate results by parent category? (y/N): ");
+        boolean aggregateByParent = scanner.nextLine().trim().toLowerCase().startsWith("y");
 
         LocalDate today = LocalDate.now();
         LocalDate firstDayOfMonth = today.withDayOfMonth(1);
@@ -2476,7 +2612,15 @@ public class Main {
                 totalExpenses += transaction.getAmount();
 
                 String category = transaction.getCategory();
-                expensesByCategory.put(category, expensesByCategory.getOrDefault(category, 0.0) + transaction.getAmount());
+
+                if (aggregateByParent && isSubcategory(category)) {
+                    String parentCategory = getParentCategory(category);
+                    expensesByCategory.put(parentCategory,
+                        expensesByCategory.getOrDefault(parentCategory, 0.0) + transaction.getAmount());
+                } else {
+                    expensesByCategory.put(category,
+                        expensesByCategory.getOrDefault(category, 0.0) + transaction.getAmount());
+                }
             }
         }
 
@@ -2493,11 +2637,25 @@ public class Main {
         System.out.printf("%sNet Balance:    $%10.2f%s\n\n", balanceColor, netBalance, RESET);
 
         if (!expensesByCategory.isEmpty()) {
-            System.out.println("Expenses by Category:");
+            String reportTitle = aggregateByParent ? "Expenses by Category (Aggregated by Parent)" : "Expenses by Category";
+            System.out.println(reportTitle);
             System.out.println("--------------------------------------------------");
 
             List<Map.Entry<String, Double>> sortedExpenses = new ArrayList<>(expensesByCategory.entrySet());
             sortedExpenses.sort((e1, e2) -> Double.compare(e2.getValue(), e1.getValue()));
+
+            Map<String, List<String>> parentToSubs = new HashMap<>();
+            if (aggregateByParent) {
+                for (Transaction transaction : filteredTransactions) {
+                    if (transaction.getType() == TransactionType.EXPENSE && isSubcategory(transaction.getCategory())) {
+                        String parent = getParentCategory(transaction.getCategory());
+                        String fullCategory = transaction.getCategory();
+                        if (!parentToSubs.computeIfAbsent(parent, k -> new ArrayList<>()).contains(fullCategory)) {
+                            parentToSubs.computeIfAbsent(parent, k -> new ArrayList<>()).add(fullCategory);
+                        }
+                    }
+                }
+            }
 
             for (Map.Entry<String, Double> entry : sortedExpenses) {
                 String category = entry.getKey();
@@ -2516,6 +2674,33 @@ public class Main {
                 } else {
                     System.out.printf("%-15s: $%10.2f (%5.1f%%)\n",
                             category, spent, percentage);
+                }
+
+                if (aggregateByParent && parentToSubs.containsKey(category)) {
+                    Map<String, Double> subCategoryAmounts = new HashMap<>();
+
+                    for (Transaction transaction : filteredTransactions) {
+                        if (transaction.getType() == TransactionType.EXPENSE &&
+                            isSubcategory(transaction.getCategory()) &&
+                            getParentCategory(transaction.getCategory()).equals(category)) {
+                            String subCategory = transaction.getCategory();
+                            subCategoryAmounts.put(subCategory,
+                                subCategoryAmounts.getOrDefault(subCategory, 0.0) + transaction.getAmount());
+                        }
+                    }
+
+                    List<Map.Entry<String, Double>> sortedSubs = new ArrayList<>(subCategoryAmounts.entrySet());
+                    sortedSubs.sort((e1, e2) -> Double.compare(e2.getValue(), e1.getValue()));
+
+                    for (Map.Entry<String, Double> subEntry : sortedSubs) {
+                        String subCategory = subEntry.getKey();
+                        double subSpent = subEntry.getValue();
+                        double subPercentage = (subSpent / spent) * 100;
+                        String childName = getChildCategory(subCategory);
+
+                        System.out.printf("  ↳ %-12s: $%10.2f (%5.1f%% of parent)\n",
+                                childName, subSpent, subPercentage);
+                    }
                 }
             }
         }

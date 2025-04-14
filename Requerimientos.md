@@ -22,7 +22,7 @@
 [X] Vista rápida de totales mensuales/año: Una opción súper rápida para ver el total de ingresos/gastos de este mes o este año sin tener que configurar el informe completo.
 [X] Informe de tendencias de gasto por categoría: Muestra cuánto he gastado en una categoría específica (como 'Comida') en los últimos 6 o 12 meses.
 [X] Informe de comparación entre periodos: Me permite comparar fácilmente los gastos/ingresos de este mes con los del mes pasado, o los de este año con los del año pasado.
-[ ] Soporte de subcategorías: Permite anidar categorías (por ejemplo, Entretenimiento:Cine, Entretenimiento:Cena) para un seguimiento más detallado.
+[X] Soporte de subcategorías: Permite anidar categorías (por ejemplo, Entretenimiento:Cine, Entretenimiento:Cena) para un seguimiento más detallado.
 [ ] Opción sencilla de copia de seguridad/restauración: Un comando sencillo para crear una copia fechada de mi archivo de datos (username_data.xml.bak) y tal vez restaurar a partir de una copia de seguridad.
 [ ] Función de cambio de contraseña: Me permite cambiar mi contraseña de acceso de forma segura.
 [ ] Ajustes básicos de configuración: Opciones para establecer mi símbolo de moneda preferido (£, €, etc.) o el intervalo de fechas predeterminado para los informes.
