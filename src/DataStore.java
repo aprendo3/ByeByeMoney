@@ -49,6 +49,11 @@ public class DataStore {
             System.out.println(uname + "|" + password);
             user = new User(username, password);
 
+            Node currencySymbolNode = ((Element)nodeUser).getElementsByTagName("currencySymbol").item(0);
+            if (currencySymbolNode != null) {
+                user.setCurrencySymbol(currencySymbolNode.getTextContent());
+            }
+
             Node nodeTransactions = ((Element)nodeUser).getElementsByTagName("transactions").item(0);
 
             if (nodeTransactions != null && nodeTransactions.hasChildNodes()) {
@@ -128,8 +133,11 @@ public class DataStore {
             username.appendChild(doc.createTextNode(user.getUsername()));
             Element password = doc.createElement("password");
             password.appendChild(doc.createTextNode(user.getPassword()));
+            Element currencySymbol = doc.createElement("currencySymbol");
+            currencySymbol.appendChild(doc.createTextNode(user.getCurrencySymbol()));
             userNode.appendChild(username);
             userNode.appendChild(password);
+            userNode.appendChild(currencySymbol);
             doc.getDocumentElement()
                     .getElementsByTagName("users").item(0)
                     .appendChild(userNode);
@@ -214,6 +222,15 @@ public class DataStore {
             Node passwordNode = ((Element)nodeUser).getElementsByTagName("password").item(0);
             if (passwordNode != null) {
                 passwordNode.setTextContent(user.getPassword());
+            }
+
+            Node currencySymbolNode = ((Element)nodeUser).getElementsByTagName("currencySymbol").item(0);
+            if (currencySymbolNode != null) {
+                currencySymbolNode.setTextContent(user.getCurrencySymbol());
+            } else {
+                Element currencySymbol = doc.createElement("currencySymbol");
+                currencySymbol.appendChild(doc.createTextNode(user.getCurrencySymbol()));
+                nodeUser.appendChild(currencySymbol);
             }
 
             Node nodeTransactions = ((Element)nodeUser).getElementsByTagName("transactions").item(0);

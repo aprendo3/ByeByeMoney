@@ -25,5 +25,5 @@
 [X] Soporte de subcategorías: Permite anidar categorías (por ejemplo, Entretenimiento:Cine, Entretenimiento:Cena) para un seguimiento más detallado.
 [X] Opción sencilla de copia de seguridad/restauración: Un comando sencillo para crear una copia fechada de mi archivo de datos (username_data.xml.bak) y tal vez restaurar a partir de una copia de seguridad.
 [X] Función de cambio de contraseña: Me permite cambiar mi contraseña de acceso de forma segura.
-[ ] Ajustes básicos de configuración: Opciones para establecer mi símbolo de moneda preferido (£, €, etc.) o el intervalo de fechas predeterminado para los informes.
+[X] Ajustes básicos de configuración: Opciones para establecer mi símbolo de moneda preferido (£, €, etc.) o el intervalo de fechas predeterminado para los informes.
 [ ] Seguimiento de objetivos de ahorro: Permíteme establecer un objetivo para una compra 

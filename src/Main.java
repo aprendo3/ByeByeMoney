@@ -172,6 +172,7 @@ class RecurringTransaction {
 class User {
     private String username;
     private String password;
+    private String currencySymbol = "$";
     public List<Transaction> transactions = new ArrayList<>();
     public List<BudgetGoal> goals = new ArrayList<>();
     public List<RecurringTransaction> recurringTransactions = new ArrayList<>();
@@ -191,6 +192,14 @@ class User {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getCurrencySymbol() {
+        return currencySymbol;
+    }
+
+    public void setCurrencySymbol(String currencySymbol) {
+        this.currencySymbol = currencySymbol;
     }
 }
 
@@ -258,6 +267,7 @@ public class Main {
             System.out.printf("[%sL%s] Log Due Recurring%n", GREEN, RESET);
             System.out.printf("[%sB%s] Backup/Restore%n", GREEN, RESET);
             System.out.printf("[%sP%s] Change Password%n", GREEN, RESET);
+            System.out.printf("[%sO%s] Options%n", GREEN, RESET);
             System.out.printf("[%sQ%s] Quit%n", RED, RESET);
             System.out.println();
             System.out.printf("Please select an %soption%s: ", BLUE, RESET);
@@ -306,6 +316,10 @@ public class Main {
                 break;
             case "p":
                 changePassword();
+                cleanScreen();
+                break;
+            case "o":
+                showOptionsMenu();
                 cleanScreen();
                 break;
             case "q":
@@ -1319,9 +1333,9 @@ public class Main {
         String netColor = netBalance >= 0 ? GREEN : RED;
 
         System.out.printf("Quick Totals (Period: %s-%s):%n%n", startDate, endDate);
-        System.out.printf("Total Income:  %s$%10.2f%s%n", GREEN, totalIncome, RESET);
-        System.out.printf("Total Expenses: %s$%10.2f%s%n", RED, totalExpenses, RESET);
-        System.out.printf("Net Balance:    %s$%10.2f%s%n", netColor, netBalance, RESET);
+        System.out.printf("Total Income:  %s%s%10.2f%s%n", GREEN, user.getCurrencySymbol(), totalIncome, RESET);
+        System.out.printf("Total Expenses: %s%s%10.2f%s%n", RED, user.getCurrencySymbol(), totalExpenses, RESET);
+        System.out.printf("Net Balance:    %s%s%10.2f%s%n", netColor, user.getCurrencySymbol(), netBalance, RESET);
 
         pausePrompt();
     }
@@ -1492,9 +1506,9 @@ public class Main {
             int barLength = maxAmount > 0 ? (int)((amount / maxAmount) * 20) : 0;
             String bar = "█".repeat(barLength);
 
-            System.out.printf("%s-%02d | $%9.2f | %s%s%s%n",
+            System.out.printf("%s-%02d | %s%9.2f | %s%s%s%n",
                     current.getYear(), current.getMonthValue(),
-                    amount,
+                    user.getCurrencySymbol(), amount,
                     RED, bar, RESET);
 
             current = current.plusMonths(1);
@@ -1625,14 +1639,14 @@ public class Main {
         System.out.println("Item       | Current Period | Previous Period | Change        | Change %");
         System.out.println("-----------+----------------+-----------------+---------------+----------");
 
-        System.out.printf("Income     | $%13.2f | $%13.2f | %s$%11.2f%s | %s%+7.2f%%%s%n",
-                currentIncome, prevIncome, incomeColor, incomeChange, RESET, incomeColor, incomeChangePct, RESET);
+        System.out.printf("Income     | %s%13.2f | %s%13.2f | %s%s%11.2f%s | %s%+7.2f%%%s%n",
+                user.getCurrencySymbol(), currentIncome, user.getCurrencySymbol(), prevIncome, incomeColor, user.getCurrencySymbol(), incomeChange, RESET, incomeColor, incomeChangePct, RESET);
 
-        System.out.printf("Expenses   | $%13.2f | $%13.2f | %s$%11.2f%s | %s%+7.2f%%%s%n",
-                currentExpenses, prevExpenses, expensesColor, expensesChange, RESET, expensesColor, expensesChangePct, RESET);
+        System.out.printf("Expenses   | %s%13.2f | %s%13.2f | %s%s%11.2f%s | %s%+7.2f%%%s%n",
+                user.getCurrencySymbol(), currentExpenses, user.getCurrencySymbol(), prevExpenses, expensesColor, user.getCurrencySymbol(), expensesChange, RESET, expensesColor, expensesChangePct, RESET);
 
-        System.out.printf("Net Balance| $%13.2f | $%13.2f | %s$%11.2f%s | %s%+7.2f%%%s%n",
-                currentNet, prevNet, netColor, netChange, RESET, netColor, netChangePct, RESET);
+        System.out.printf("Net Balance| %s%13.2f | %s%13.2f | %s%s%11.2f%s | %s%+7.2f%%%s%n",
+                user.getCurrencySymbol(), currentNet, user.getCurrencySymbol(), prevNet, netColor, user.getCurrencySymbol(), netChange, RESET, netColor, netChangePct, RESET);
 
         if (currentTransactions.isEmpty() && prevTransactions.isEmpty()) {
             System.out.println("\nNo transactions found in either period.");
@@ -2306,7 +2320,7 @@ public class Main {
         System.out.println("Current Budget Goals:\n");
         for (int i = 0; i < user.goals.size(); i++) {
             BudgetGoal goal = user.goals.get(i);
-            System.out.printf("%s%d%s. %s - Goal: $%.2f%n", GREEN, i + 1, RESET, goal.getCategory(), goal.getAmount());
+            System.out.printf("%s%d%s. %s - Goal: %s%.2f%n", GREEN, i + 1, RESET, goal.getCategory(), user.getCurrencySymbol(), goal.getAmount());
         }
 
         pausePrompt();
@@ -2361,10 +2375,10 @@ public class Main {
 
         if (existingGoal != null) {
             existingGoal.setAmount(amount);
-            System.out.printf("Budget goal for '%s' updated to $%.2f%n", category, amount);
+            System.out.printf("Budget goal for '%s' updated to %s%.2f%n", category, user.getCurrencySymbol(), amount);
         } else {
             user.goals.add(new BudgetGoal(category, amount));
-            System.out.printf("Budget goal for '%s' set to $%.2f%n", category, amount);
+            System.out.printf("Budget goal for '%s' set to %s%.2f%n", category, user.getCurrencySymbol(), amount);
         }
 
         store.updateUser(user);
@@ -2384,7 +2398,7 @@ public class Main {
         System.out.println("Select a goal to delete:\n");
         for (int i = 0; i < user.goals.size(); i++) {
             BudgetGoal goal = user.goals.get(i);
-            System.out.printf("%s%d%s. %s - Goal: $%.2f%n", GREEN, i + 1, RESET, goal.getCategory(), goal.getAmount());
+            System.out.printf("%s%d%s. %s - Goal: %s%.2f%n", GREEN, i + 1, RESET, goal.getCategory(), user.getCurrencySymbol(), goal.getAmount());
         }
 
         System.out.print("\nEnter goal number: ");
@@ -2647,12 +2661,12 @@ public class Main {
         System.out.println("==================================================");
         System.out.printf("Report Period: %s to %s\n\n", startDate, endDate);
 
-        System.out.printf("%sTotal Income:   $%10.2f%s\n", GREEN, totalIncome, RESET);
-        System.out.printf("%sTotal Expenses: $%10.2f%s\n", RED, totalExpenses, RESET);
+        System.out.printf("%sTotal Income:   %s%10.2f%s\n", GREEN, user.getCurrencySymbol(), totalIncome, RESET);
+        System.out.printf("%sTotal Expenses: %s%10.2f%s\n", RED, user.getCurrencySymbol(), totalExpenses, RESET);
         System.out.println("--------------------------------------------------");
 
         String balanceColor = netBalance >= 0 ? GREEN : RED;
-        System.out.printf("%sNet Balance:    $%10.2f%s\n\n", balanceColor, netBalance, RESET);
+        System.out.printf("%sNet Balance:    %s%10.2f%s\n\n", balanceColor, user.getCurrencySymbol(), netBalance, RESET);
 
         if (!expensesByCategory.isEmpty()) {
             String reportTitle = aggregateByParent ? "Expenses by Category (Aggregated by Parent)" : "Expenses by Category";
@@ -2686,12 +2700,12 @@ public class Main {
                     double progressPercentage = (spent / goalAmount) * 100;
                     String progressColor = progressPercentage <= 100 ? GREEN : RED;
 
-                    System.out.printf("%-15s: $%10.2f (%5.1f%%) - Goal: $%.2f %s(%5.1f%%)%s\n",
-                            category, spent, percentage, goalAmount,
+                    System.out.printf("%-15s: %s%10.2f (%5.1f%%) - Goal: %s%.2f %s(%5.1f%%)%s\n",
+                            category, user.getCurrencySymbol(), spent, percentage, user.getCurrencySymbol(), goalAmount,
                             progressColor, progressPercentage, RESET);
                 } else {
-                    System.out.printf("%-15s: $%10.2f (%5.1f%%)\n",
-                            category, spent, percentage);
+                    System.out.printf("%-15s: %s%10.2f (%5.1f%%)\n",
+                            category, user.getCurrencySymbol(), spent, percentage);
                 }
 
                 if (aggregateByParent && parentToSubs.containsKey(category)) {
@@ -2716,8 +2730,8 @@ public class Main {
                         double subPercentage = (subSpent / spent) * 100;
                         String childName = getChildCategory(subCategory);
 
-                        System.out.printf("  ↳ %-12s: $%10.2f (%5.1f%% of parent)\n",
-                                childName, subSpent, subPercentage);
+                        System.out.printf("  ↳ %-12s: %s%10.2f (%5.1f%% of parent)\n",
+                                childName, user.getCurrencySymbol(), subSpent, subPercentage);
                     }
                 }
             }
@@ -2895,6 +2909,52 @@ public class Main {
         store.updateUser(user);
 
         System.out.printf("%sPassword changed.%s%n", GREEN, RESET);
+        pausePrompt();
+    }
+
+    private static void showOptionsMenu() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sOptions%s%n%n", BLUE, RED, BLUE, RESET);
+
+        boolean running = true;
+        while (running) {
+            System.out.printf("[%sC%s] Set Currency Symbol%n", GREEN, RESET);
+            System.out.printf("[%sB%s] Back to Main Menu%n", RED, RESET);
+            System.out.println();
+            System.out.printf("Please select an %soption%s: ", BLUE, RESET);
+
+            String choice = scanner.nextLine().toLowerCase();
+
+            switch (choice) {
+            case "c":
+                setCurrencySymbol();
+                break;
+            case "b":
+                running = false;
+                break;
+            default:
+                System.out.println("Invalid choice. Please try again.");
+                break;
+            }
+        }
+    }
+
+    private static void setCurrencySymbol() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sOptions%s > %sSet Currency Symbol%s%n%n", BLUE, RED, BLUE, RESET, BLUE, RESET);
+
+        System.out.printf("Current currency symbol: %s%n%n", user.getCurrencySymbol());
+        System.out.print("Enter new currency symbol (e.g., $, £, €): ");
+        String newSymbol = scanner.nextLine().trim();
+
+        if (!newSymbol.isEmpty()) {
+            user.setCurrencySymbol(newSymbol);
+            store.updateUser(user);
+            System.out.printf("%sCurrency symbol updated.%s%n", GREEN, RESET);
+        } else {
+            System.out.printf("%sCurrency symbol cannot be empty. No changes made.%s%n", RED, RESET);
+        }
+
         pausePrompt();
     }
 }
