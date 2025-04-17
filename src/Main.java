@@ -52,6 +52,46 @@ class BudgetGoal {
     }
 }
 
+class SavingsGoal {
+    private String name;
+    private double targetAmount;
+    private double currentAmount;
+
+    public SavingsGoal(String name, double targetAmount, double currentAmount) {
+        this.name = name;
+        this.targetAmount = targetAmount;
+        this.currentAmount = currentAmount;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public double getTargetAmount() {
+        return targetAmount;
+    }
+
+    public double getCurrentAmount() {
+        return currentAmount;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setTargetAmount(double targetAmount) {
+        this.targetAmount = targetAmount;
+    }
+
+    public void setCurrentAmount(double currentAmount) {
+        this.currentAmount = currentAmount;
+    }
+
+    public double getPercentComplete() {
+        return (currentAmount / targetAmount) * 100;
+    }
+}
+
 class Transaction {
     private String date;
     private String description;
@@ -176,6 +216,7 @@ class User {
     public List<Transaction> transactions = new ArrayList<>();
     public List<BudgetGoal> goals = new ArrayList<>();
     public List<RecurringTransaction> recurringTransactions = new ArrayList<>();
+    public List<SavingsGoal> savingsGoals = new ArrayList<>();
 
     public User(String username, String password) {
         this.username = username;
@@ -268,6 +309,7 @@ public class Main {
             System.out.printf("[%sB%s] Backup/Restore%n", GREEN, RESET);
             System.out.printf("[%sP%s] Change Password%n", GREEN, RESET);
             System.out.printf("[%sO%s] Options%n", GREEN, RESET);
+            System.out.printf("[%sZ%s] Savings Goals%n", GREEN, RESET);
             System.out.printf("[%sQ%s] Quit%n", RED, RESET);
             System.out.println();
             System.out.printf("Please select an %soption%s: ", BLUE, RESET);
@@ -320,6 +362,10 @@ public class Main {
                 break;
             case "o":
                 showOptionsMenu();
+                cleanScreen();
+                break;
+            case "z":
+                manageSavingsGoals();
                 cleanScreen();
                 break;
             case "q":
@@ -2953,6 +2999,223 @@ public class Main {
             System.out.printf("%sCurrency symbol updated.%s%n", GREEN, RESET);
         } else {
             System.out.printf("%sCurrency symbol cannot be empty. No changes made.%s%n", RED, RESET);
+        }
+
+        pausePrompt();
+    }
+
+    private static void manageSavingsGoals() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sSavings Goals%s%n%n", BLUE, RED, BLUE, RESET);
+
+        boolean running = true;
+        while (running) {
+            System.out.printf("[%sA%s] Add Goal%n", GREEN, RESET);
+            System.out.printf("[%sL%s] List Goals%n", GREEN, RESET);
+            System.out.printf("[%sU%s] Update Progress%n", GREEN, RESET);
+            System.out.printf("[%sD%s] Delete Goal%n", GREEN, RESET);
+            System.out.printf("[%sQ%s] Back to Main Menu%n", RED, RESET);
+            System.out.println();
+            System.out.printf("Please select an %soption%s: ", BLUE, RESET);
+
+            String choice = scanner.nextLine().toLowerCase();
+
+            switch (choice) {
+            case "a":
+                addSavingsGoal();
+                break;
+            case "l":
+                listSavingsGoals();
+                break;
+            case "u":
+                updateSavingsGoalProgress();
+                break;
+            case "d":
+                deleteSavingsGoal();
+                break;
+            case "q":
+                running = false;
+                break;
+            default:
+                System.out.println("Invalid choice. Please try again.");
+                break;
+            }
+        }
+    }
+
+    private static void addSavingsGoal() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sSavings Goals%s > %sAdd Goal%s%n%n", BLUE, RED, BLUE, RESET, BLUE, RESET);
+
+        System.out.print("Enter goal: ");
+        String name = scanner.nextLine().trim();
+
+        if (name.isEmpty()) {
+            System.out.printf("%scannot be empty.%s%n", RED, RESET);
+            pausePrompt();
+            return;
+        }
+
+        double target;
+        while (true) {
+            System.out.print("Enter target (positive number): ");
+            Double amount = tryToParseDouble(scanner.nextLine());
+            if (amount != null && amount > 0) {
+                target = amount;
+                break;
+            } else {
+                System.out.println("Invalid amount. Please enter a positive number.");
+            }
+        }
+
+        SavingsGoal goal = new SavingsGoal(name, target, 0);
+        user.savingsGoals.add(goal);
+        store.updateUser(user);
+
+        System.out.printf("%sGoal '%s' added, target %s%.2f.%s%n",
+                GREEN, name, user.getCurrencySymbol(), target, RESET);
+        pausePrompt();
+    }
+
+    private static void listSavingsGoals() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sSavings Goals%s > %sList Goals%s%n%n", BLUE, RED, BLUE, RESET, BLUE, RESET);
+
+        if (user.savingsGoals.isEmpty()) {
+            System.out.println("No savings.");
+            pausePrompt();
+            return;
+        }
+
+        System.out.println("Current Savings:\n");
+        System.out.println("#  | Name                | Progress                  | Percentage");
+        System.out.println("---+---------------------+--------------------------+------------");
+
+        for (int i = 0; i < user.savingsGoals.size(); i++) {
+            SavingsGoal goal = user.savingsGoals.get(i);
+            double percentage = goal.getPercentComplete();
+            String percentColor = percentage < 100 ? GREEN : BLUE;
+
+            System.out.printf("%s%2d%s | %-20s | %s%.2f%s/%s%.2f%s | %s%.1f%%%s%n",
+                    GREEN, i + 1, RESET,
+                    goal.getName(),
+                    GREEN, goal.getCurrentAmount(), RESET,
+                    BLUE, goal.getTargetAmount(), RESET,
+                    percentColor, percentage, RESET);
+        }
+
+        pausePrompt();
+    }
+
+    private static void updateSavingsGoalProgress() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sSavings Goals%s > %sUpdate Progress%s%n%n", BLUE, RED, BLUE, RESET, BLUE, RESET);
+
+        if (user.savingsGoals.isEmpty()) {
+            System.out.println("No savings to update.");
+            pausePrompt();
+            return;
+        }
+
+        System.out.println("Select a goal to update:\n");
+        for (int i = 0; i < user.savingsGoals.size(); i++) {
+            SavingsGoal goal = user.savingsGoals.get(i);
+            System.out.printf("%s%d%s. %s - Progress: %s%.2f%s/%s%.2f%s (%.1f%%)%n",
+                    GREEN, i + 1, RESET,
+                    goal.getName(),
+                    GREEN, goal.getCurrentAmount(), RESET,
+                    BLUE, goal.getTargetAmount(), RESET,
+                    goal.getPercentComplete());
+        }
+
+        System.out.print("\nEnter goal number: ");
+        String input = scanner.nextLine();
+        Integer choice = tryToParse(input);
+
+        if (choice == null || choice < 1 || choice > user.savingsGoals.size()) {
+            System.out.println("Invalid choice.");
+            pausePrompt();
+            return;
+        }
+
+        SavingsGoal selectedGoal = user.savingsGoals.get(choice - 1);
+
+        double amount;
+        while (true) {
+            System.out.print("Enter amount to add to goal (positive number): ");
+            Double parsedAmount = tryToParseDouble(scanner.nextLine());
+            if (parsedAmount != null && parsedAmount > 0) {
+                amount = parsedAmount;
+                break;
+            } else {
+                System.out.println("Invalid amount. Please enter a positive number.");
+            }
+        }
+
+        double newAmount = selectedGoal.getCurrentAmount() + amount;
+        selectedGoal.setCurrentAmount(newAmount);
+        store.updateUser(user);
+
+        double percentage = selectedGoal.getPercentComplete();
+        boolean completed = percentage >= 100;
+
+        System.out.printf("%sAdded %s%.2f to goal '%s'.%s%n",
+                GREEN, user.getCurrencySymbol(), amount, selectedGoal.getName(), RESET);
+        System.out.printf("New progress: %s%.2f%s/%s%.2f%s (%.1f%%)%n",
+                GREEN, selectedGoal.getCurrentAmount(), RESET,
+                BLUE, selectedGoal.getTargetAmount(), RESET,
+                percentage);
+
+        if (completed) {
+            System.out.printf("%sCongratulations! Goal '%s' has been reached!%s%n",
+                    BLUE, selectedGoal.getName(), RESET);
+        }
+
+        pausePrompt();
+    }
+
+    private static void deleteSavingsGoal() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sSavings Goals%s > %sDelete Goal%s%n%n", BLUE, RED, BLUE, RESET, BLUE, RESET);
+
+        if (user.savingsGoals.isEmpty()) {
+            System.out.println("No savings to delete.");
+            pausePrompt();
+            return;
+        }
+
+        System.out.println("Select to delete:\n");
+        for (int i = 0; i < user.savingsGoals.size(); i++) {
+            SavingsGoal goal = user.savingsGoals.get(i);
+            System.out.printf("%s%d%s. %s - Progress: %s%.2f%s/%s%.2f%s (%.1f%%)%n",
+                    GREEN, i + 1, RESET,
+                    goal.getName(),
+                    GREEN, goal.getCurrentAmount(), RESET,
+                    BLUE, goal.getTargetAmount(), RESET,
+                    goal.getPercentComplete());
+        }
+
+        System.out.print("\nEnter goal number: ");
+        String input = scanner.nextLine();
+        Integer choice = tryToParse(input);
+
+        if (choice == null || choice < 1 || choice > user.savingsGoals.size()) {
+            System.out.println("Invalid choice.");
+            pausePrompt();
+            return;
+        }
+
+        SavingsGoal selectedGoal = user.savingsGoals.get(choice - 1);
+
+        System.out.printf("\nAre you sure to delete the goal '%s'? (y/n): ", selectedGoal.getName());
+        String confirm = scanner.nextLine().toLowerCase();
+
+        if ("y".equals(confirm)) {
+            user.savingsGoals.remove(choice - 1);
+            store.updateUser(user);
+            System.out.printf("%sGoal '%s' deleted.%s%n", GREEN, selectedGoal.getName(), RESET);
+        } else {
+            System.out.println("Deletion cancelled.");
         }
 
         pausePrompt();

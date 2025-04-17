@@ -54,6 +54,28 @@ public class DataStore {
                 user.setCurrencySymbol(currencySymbolNode.getTextContent());
             }
 
+            Node savingsGoalsNode = ((Element)nodeUser).getElementsByTagName("savingsGoals").item(0);
+            if (savingsGoalsNode != null && savingsGoalsNode.hasChildNodes()) {
+                NodeList savingsGoals = savingsGoalsNode.getChildNodes();
+                for (int i = 0; i < savingsGoals.getLength(); i++) {
+                    Node nodeSavingsGoal = savingsGoals.item(i);
+                    if (nodeSavingsGoal.getNodeType() == Node.TEXT_NODE) continue;
+
+                    Node nameNode = ((Element)nodeSavingsGoal).getElementsByTagName("name").item(0);
+                    Node targetAmountNode = ((Element)nodeSavingsGoal).getElementsByTagName("targetAmount").item(0);
+                    Node currentAmountNode = ((Element)nodeSavingsGoal).getElementsByTagName("currentAmount").item(0);
+
+                    if (nameNode != null && targetAmountNode != null && currentAmountNode != null) {
+                        String name = nameNode.getTextContent();
+                        double targetAmount = Double.parseDouble(targetAmountNode.getTextContent());
+                        double currentAmount = Double.parseDouble(currentAmountNode.getTextContent());
+
+                        SavingsGoal savingsGoal = new SavingsGoal(name, targetAmount, currentAmount);
+                        user.savingsGoals.add(savingsGoal);
+                    }
+                }
+            }
+
             Node nodeTransactions = ((Element)nodeUser).getElementsByTagName("transactions").item(0);
 
             if (nodeTransactions != null && nodeTransactions.hasChildNodes()) {
@@ -296,6 +318,37 @@ public class DataStore {
 
             if (nodeRecurring != null) {
                 nodeUser.removeChild(nodeRecurring);
+            }
+
+            Node nodeSavingsGoals = ((Element)nodeUser).getElementsByTagName("savingsGoals").item(0);
+
+            if (nodeSavingsGoals != null) {
+                nodeUser.removeChild(nodeSavingsGoals);
+            }
+
+            if (!user.savingsGoals.isEmpty()) {
+                Element savingsGoalsElement = doc.createElement("savingsGoals");
+
+                for (SavingsGoal savingsGoal : user.savingsGoals) {
+                    Element savingsGoalElement = doc.createElement("savingsGoal");
+
+                    Element name = doc.createElement("name");
+                    name.appendChild(doc.createTextNode(savingsGoal.getName()));
+
+                    Element targetAmount = doc.createElement("targetAmount");
+                    targetAmount.appendChild(doc.createTextNode(String.valueOf(savingsGoal.getTargetAmount())));
+
+                    Element currentAmount = doc.createElement("currentAmount");
+                    currentAmount.appendChild(doc.createTextNode(String.valueOf(savingsGoal.getCurrentAmount())));
+
+                    savingsGoalElement.appendChild(name);
+                    savingsGoalElement.appendChild(targetAmount);
+                    savingsGoalElement.appendChild(currentAmount);
+
+                    savingsGoalsElement.appendChild(savingsGoalElement);
+                }
+
+                nodeUser.appendChild(savingsGoalsElement);
             }
 
             if (!user.recurringTransactions.isEmpty()) {
