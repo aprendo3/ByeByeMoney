@@ -211,6 +211,11 @@ public class DataStore {
 
             if (nodeUser == null) return;
 
+            Node passwordNode = ((Element)nodeUser).getElementsByTagName("password").item(0);
+            if (passwordNode != null) {
+                passwordNode.setTextContent(user.getPassword());
+            }
+
             Node nodeTransactions = ((Element)nodeUser).getElementsByTagName("transactions").item(0);
 
             if (nodeTransactions != null) {

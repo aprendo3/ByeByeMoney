@@ -188,6 +188,10 @@ class User {
     public String getPassword() {
         return password;
     }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
 }
 
 public class Main {
@@ -253,6 +257,7 @@ public class Main {
             System.out.printf("[%sR%s] Manage Recurring%n", GREEN, RESET);
             System.out.printf("[%sL%s] Log Due Recurring%n", GREEN, RESET);
             System.out.printf("[%sB%s] Backup/Restore%n", GREEN, RESET);
+            System.out.printf("[%sP%s] Change Password%n", GREEN, RESET);
             System.out.printf("[%sQ%s] Quit%n", RED, RESET);
             System.out.println();
             System.out.printf("Please select an %soption%s: ", BLUE, RESET);
@@ -297,6 +302,10 @@ public class Main {
                 break;
             case "b":
                 showBackupRestoreMenu();
+                cleanScreen();
+                break;
+            case "p":
+                changePassword();
                 cleanScreen();
                 break;
             case "q":
@@ -2849,5 +2858,43 @@ public class Main {
         } catch (Exception e) {
             return timestamp;
         }
+    }
+
+    private static void changePassword() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sChange Password%s%n%n", BLUE, RED, BLUE, RESET);
+
+        System.out.print("Current Password: ");
+        String currentPassword = scanner.nextLine();
+
+        if (!currentPassword.equals(user.getPassword())) {
+            System.out.printf("%sIncorrect password. Change cancelled.%s%n", RED, RESET);
+            pausePrompt();
+            return;
+        }
+
+        System.out.print("New Password: ");
+        String newPassword = scanner.nextLine();
+
+        if (newPassword.trim().isEmpty()) {
+            System.out.printf("%sPassword cannot be empty. Change cancelled.%s%n", RED, RESET);
+            pausePrompt();
+            return;
+        }
+
+        System.out.print("Confirm New Password: ");
+        String confirmPassword = scanner.nextLine();
+
+        if (!newPassword.equals(confirmPassword)) {
+            System.out.printf("%sPasswords do not match. Change cancelled.%s%n", RED, RESET);
+            pausePrompt();
+            return;
+        }
+
+        user.setPassword(newPassword);
+        store.updateUser(user);
+
+        System.out.printf("%sPassword changed.%s%n", GREEN, RESET);
+        pausePrompt();
     }
 }
