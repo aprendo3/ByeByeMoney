@@ -3,7 +3,12 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -15,6 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.stream.Collectors;
 
 enum TransactionType {
     INCOME, EXPENSE
@@ -246,6 +252,7 @@ public class Main {
             System.out.printf("[%sG%s] Manage Goals%n", GREEN, RESET);
             System.out.printf("[%sR%s] Manage Recurring%n", GREEN, RESET);
             System.out.printf("[%sL%s] Log Due Recurring%n", GREEN, RESET);
+            System.out.printf("[%sB%s] Backup/Restore%n", GREEN, RESET);
             System.out.printf("[%sQ%s] Quit%n", RED, RESET);
             System.out.println();
             System.out.printf("Please select an %soption%s: ", BLUE, RESET);
@@ -286,6 +293,10 @@ public class Main {
                 break;
             case "l":
                 logDueRecurringTransactions();
+                cleanScreen();
+                break;
+            case "b":
+                showBackupRestoreMenu();
                 cleanScreen();
                 break;
             case "q":
@@ -667,7 +678,6 @@ public class Main {
     }
 
     private static void promptForTransactionEdit(List<Transaction> transactions) {
-        cleanScreen();
         System.out.printf("%sBye Bye Money%s > %sEdit Transaction%s%n%n", BLUE, RED, BLUE, RESET);
 
         System.out.print("Enter transaction number to edit: ");
@@ -757,7 +767,6 @@ public class Main {
     }
 
     private static void promptForTransactionDelete(List<Transaction> transactions) {
-        cleanScreen();
         System.out.printf("%sBye Bye Money%s > %sDelete Transaction%s%n%n", BLUE, RED, BLUE, RESET);
 
         System.out.print("Enter transaction number to delete: ");
@@ -2707,5 +2716,138 @@ public class Main {
 
         System.out.println("==================================================");
         pausePrompt();
+    }
+
+    private static void showBackupRestoreMenu() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sBackup/Restore%s%n%n", BLUE, RED, BLUE, RESET);
+
+        boolean running = true;
+        while (running) {
+            System.out.printf("[%sC%s] Create Backup%n", GREEN, RESET);
+            System.out.printf("[%sR%s] Restore from Backup%n", GREEN, RESET);
+            System.out.printf("[%sB%s] Back to Main Menu%n", RED, RESET);
+            System.out.println();
+            System.out.printf("Please select an %soption%s: ", BLUE, RESET);
+
+            String choice = scanner.nextLine().toLowerCase();
+
+            switch (choice) {
+            case "c":
+                createBackup();
+                break;
+            case "r":
+                restoreBackup();
+                break;
+            case "b":
+                running = false;
+                break;
+            default:
+                System.out.println("Invalid choice. Please try again.");
+                break;
+            }
+        }
+    }
+
+    private static void createBackup() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sCreate Backup%s%n%n", BLUE, RED, BLUE, RESET);
+
+        try {
+            String fname = store.filename;
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+            String backupName = fname + "_" + timestamp + ".bak";
+
+            Path source = Paths.get(fname);
+            Path target = Paths.get(backupName);
+
+            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+
+            System.out.printf("Backup created: %s%s%s%n", GREEN, backupName, RESET);
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+
+        pausePrompt();
+    }
+
+    private static void restoreBackup() {
+        cleanScreen();
+        System.out.printf("%sBye Bye Money%s > %sRestore from Backup%s%n%n", BLUE, RED, BLUE, RESET);
+
+        String fname = store.filename;
+        File dataDir = new File(fname).getParentFile();
+        String prefix = new File(fname).getName() + "_";
+
+        try {
+            List<Path> backups = Files.list(dataDir.toPath())
+                    .filter(path -> path.getFileName().toString().startsWith(prefix) &&
+                                   path.getFileName().toString().endsWith(".bak"))
+                    .sorted((p1, p2) -> p2.getFileName().toString().compareTo(p1.getFileName().toString()))
+                    .collect(Collectors.toList());
+
+            if (backups.isEmpty()) {
+                System.out.println("No backups.");
+                pausePrompt();
+                return;
+            }
+
+            System.out.println("Available backups:");
+            for (int i = 0; i < backups.size(); i++) {
+                String filename = backups.get(i).getFileName().toString();
+                String timestamp = filename.substring(prefix.length(), filename.length() - 4);
+                System.out.printf("%s%d%s. %s (%s)%n", GREEN, i + 1, RESET, filename, formatTimestamp(timestamp));
+            }
+
+            System.out.printf("%nPlease select a backup number (1-%d) or 'q' to cancel: ", backups.size());
+            String choice = scanner.nextLine().toLowerCase();
+
+            if ("q".equals(choice)) {
+                System.out.println("\nRestore cancelled.");
+                pausePrompt();
+                return;
+            }
+
+            Integer selection = tryToParse(choice);
+            if (selection == null || selection < 1 || selection > backups.size()) {
+                System.out.println("\nInvalid selection. Restore cancelled.");
+                pausePrompt();
+                return;
+            }
+
+            Path selectedBackup = backups.get(selection - 1);
+            System.out.printf("%n%sWARNING: current data will be replaced.%s%n", RED, RESET);
+            System.out.print("Continue? (y/n): ");
+            String confirm = scanner.nextLine().toLowerCase();
+
+            if (!"y".equals(confirm)) {
+                System.out.println("\nRestore cancelled.");
+                pausePrompt();
+                return;
+            }
+
+            Path dataPath = Paths.get(fname);
+            Files.copy(selectedBackup, dataPath, StandardCopyOption.REPLACE_EXISTING);
+
+            System.out.printf("%n%sBackup restored.%s%n", GREEN, RESET);
+
+            user = store.getUser(user.getUsername());
+            categoriesSavedBefore = store.loadCategories(incCats, expCats);
+
+            System.out.println("User data reloaded.");
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+
+        pausePrompt();
+    }
+
+    private static String formatTimestamp(String timestamp) {
+        try {
+            LocalDateTime dateTime = LocalDateTime.parse(timestamp, DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+            return dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        } catch (Exception e) {
+            return timestamp;
+        }
     }
 }
